@@ -1,0 +1,11 @@
+# Platform folders are generated fresh by CI (see ../.github/workflows/build-apk.yml)
+# rather than hand-authored or committed — keeps them always in sync with
+# whatever Flutter version CI actually builds with.
+android/
+ios/
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/

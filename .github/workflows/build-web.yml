@@ -1,0 +1,69 @@
+name: Build Fungu web (PWA)
+
+# iOS doesn't get a native app yet (needs a Mac + Apple Developer account —
+# see app/README.md). This is the real path onto an iPhone today: the same
+# Flutter/Dart code, built for web and shipped as an installable PWA.
+# Android users get the native APK from build-apk.yml; iOS users get this.
+#
+# NOTE on deployment: GitHub Pages requires a paid plan for private repos,
+# so this workflow only builds and uploads the artifact — it does NOT deploy
+# anywhere automatically. Deployment is via Vercel instead (already used for
+# the rest of this project), triggered manually by downloading this
+# artifact and running `vercel deploy --prod` — see app/README.md. Wiring
+# up automatic Vercel deploys from CI would need a VERCEL_TOKEN secret this
+# repo doesn't have yet.
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "app/**"
+      - ".github/workflows/build-web.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # needed to publish the release asset below
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.0"
+          channel: "stable"
+
+      # Same pattern as build-apk.yml — web/ is generated fresh each run,
+      # never hand-authored or committed.
+      - name: Ensure web platform folder exists
+        run: |
+          if [ ! -d web ]; then
+            flutter create --platforms=web --org com.fungu --project-name fungu .
+          fi
+
+      - run: flutter pub get
+
+      - name: Build release web bundle
+        run: |
+          flutter build web --release \
+            --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL || 'https://fungu-api.example.com' }} \
+            --dart-define=APP_VERSION=${{ github.sha }}
+
+      # Published as a GitHub Release asset, same reasoning as build-apk.yml —
+      # separate storage from the Actions artifact quota this account hit.
+      - name: Zip web build
+        run: cd build/web && zip -r ../../fungu-web-build.zip .
+
+      - name: Publish web build as a release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest-web-build --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest-web-build \
+            fungu-web-build.zip \
+            --title "Fungu — latest web/PWA build" \
+            --notes "Auto-built from commit ${{ github.sha }}. Unzip and \`vercel deploy --prod\` — see app/README.md."

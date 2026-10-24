@@ -1,0 +1,87 @@
+name: Build Fungu APK
+
+# Builds the Android APK in CI rather than locally — the dev machine this
+# was built on is a 7.7GB live-boot overlay with no room for the Flutter +
+# Android SDK toolchain (6-12GB typical). See app/README.md.
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "app/**"
+      - ".github/workflows/build-apk.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # needed to publish the release asset below
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.0"
+          channel: "stable"
+
+      # Scaffolds android/ (and ios/) without touching existing pubspec.yaml
+      # or lib/ — `flutter create .` on a directory that already has a
+      # pubspec.yaml only adds missing platform folders.
+      - name: Ensure platform folders exist
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android,ios --org com.fungu --project-name fungu .
+          fi
+
+      # `flutter create`'s generated AndroidManifest.xml does NOT include
+      # INTERNET by default — confirmed empirically by extracting the string
+      # pool from a built release APK and finding it absent. Without it,
+      # every network call fails at the OS level with a SocketException,
+      # which the app (correctly, but confusingly) reports as "No internet
+      # connection" even on a fully connected device. This is why account
+      # creation failed for real users despite having a working connection.
+      - name: Ensure INTERNET permission is present
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
+            sed -i 's#<manifest #<manifest #; s#</manifest>#    <uses-permission android:name="android.permission.INTERNET"/>\n</manifest>#' "$MANIFEST"
+          fi
+          grep -q 'android.permission.INTERNET' "$MANIFEST" || (echo "FATAL: INTERNET permission still missing after patch" && exit 1)
+
+      - run: flutter pub get
+
+      - run: flutter analyze --no-fatal-infos
+
+      - name: Build release APK
+        run: |
+          flutter build apk --release \
+            --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL || 'https://fungu-api.example.com' }} \
+            --dart-define=APP_VERSION=${{ github.sha }}
+
+      # Published as a GitHub Release asset rather than a workflow artifact —
+      # release assets use separate storage from the Actions artifact quota,
+      # which this account hit (5GB+ of stale artifacts from other repos,
+      # cleared 24 Aug 2026 but Actions storage usage is only recalculated
+      # by GitHub every 6-12 hours, so a fresh artifact upload could still
+      # fail even right after cleanup). A rolling "latest-build" release also
+      # gives a stable, permanent download link instead of a 30-day-expiring
+      # artifact tied to one specific run.
+      - name: Publish APK as a release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd ..
+          gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest-build \
+            app/build/app/outputs/flutter-apk/app-release.apk \
+            --title "Fungu — latest Android build" \
+            --notes "Auto-built from commit ${{ github.sha }}. Android APK — sideload directly. See app/README.md for iOS (web/PWA build, separate workflow)."

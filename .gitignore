@@ -1,0 +1,25 @@
+.env
+node_modules/
+.DS_Store
+research/.venv/
+research/transcript_run.log
+
+# --- secrets and local data (never commit) ---
+.env
+.env.*
+*.env
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.pem
+*.key
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+.vercel/
+node_modules/
+
+# fetched by research/fetch_transcripts.py (third-party content, not committed)
+research/transcripts/
