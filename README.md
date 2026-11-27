@@ -6,6 +6,28 @@ See [`BRAINSTORM.md`](./BRAINSTORM.md) for the full brainstorm and due-diligence
 
 **Regulatory note, updated during the build:** the original framing was "the app never holds funds." Building the actual STK Push integration surfaced that this isn't quite right — Safaricom's public API can only push a payment prompt into a business shortcode, so a borrower's payment lands in Fungu's own account first and is then forwarded to the lender via a second (B2C) call. Funds transit a Fungu-controlled account, briefly. See the header comment in [`server/src/lib/mpesa.ts`](./server/src/lib/mpesa.ts) and §6 of `MVP-PRD.md` — this needs a lawyer's read before any real money moves through it, and the regulatory question is now more specifically about Payment Service Provider treatment, not just DCP licensing.
 
+## On Solana (devnet)
+
+| | |
+|---|---|
+| Program | [`6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE`](https://explorer.solana.com/address/6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE?cluster=devnet) (Anchor 1.2.2) |
+| Source | [`programs/fungu/src/lib.rs`](programs/fungu/src/lib.rs) |
+| Client | [`sdk/`](sdk): IDL, types, and an end-to-end test against the live program |
+
+What the program does:
+- **Debts between friends:** the lender proposes, the borrower accepts the exact terms (stored as a hash), an optional guarantor co-signs. Funding and repayments go wallet to wallet; Fungu never holds the money. Partial repayment, no overpayment. The lender can confirm a cash or mobile-money repayment on-chain (only the lender can, so a borrower can't fake one). Overdue is a flag, never a penalty, and the lender can forgive the rest.
+- **Chamas (2 to 12 members):** fixed contribution per round, payout rotates in join order, anyone can trigger a payout once everyone has paid or time is up. Each member stakes a refundable bond; a member who misses a round after being paid is covered from their own bond, and the miss is recorded. The pot sits in a vault only the program's rules can move: there is no admin key.
+- **Profiles:** a public count of debts settled (on time or late) and chama cycles completed. Not a credit score.
+- **Gasless:** every instruction takes a separate fee payer, so the app can sponsor fees. No personal data goes on-chain.
+
+Run the end-to-end test (one debt + a full 3-member chama, 27 transactions):
+
+```
+cd sdk && npm install && SPONSOR_KEYPAIR=~/.config/solana/id.json npm run e2e
+```
+
+Built during the Dev3pack Global Hackathon (27–29 Nov 2026): the Solana program, the SDK and the end-to-end test. The ledger app and API in `app/` and `server/` existed before the hackathon (Aug 2026).
+
 ## Code
 
 - [`app/`](./app) — Flutter client (Android + iOS from one codebase), see `app/README.md`

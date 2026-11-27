@@ -1,0 +1,13 @@
+{
+  "name": "@fungu/sdk",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "private": true,
+  "scripts": { "e2e": "node scripts/e2e.mjs" },
+  "dependencies": {
+    "@anchor-lang/core": "1.2.2",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0"
+  }
+}

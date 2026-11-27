@@ -1,0 +1,122 @@
+{
+  "program": "6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE",
+  "mint": "F4UU4JscCtM7VZHyc6K8gYLt1ri6MmkvUPYW6qqKuoHc",
+  "agreement": "26YumjjvQJkKsxXapbgJcN5fQuwpRPVqUfzyJApGk9rR",
+  "chama": "2CVR6TPJDggQMjiZ4i8GcaPYVq9FtPTjzkriS6knDAXx",
+  "final": {
+    "alice": 70,
+    "bob": 130,
+    "carol": 100
+  },
+  "failures": 0,
+  "txs": [
+    {
+      "name": "profile alice",
+      "sig": "49QhhiGuLpLawUiSsurSfDjTV8NCLNAC9mFCExdftTqyVChwvy61xpq9WjFDijK696Hg5NRuQ5rDwUESnYZFWhpS"
+    },
+    {
+      "name": "profile bob",
+      "sig": "3rLqZroFPPckzrxWewfDFNchydi6MQTNMSod5xcbJ5c1nYAUHbTPHqdUpP2Txni1gaU9Uy6emrpLWQy3YZCaAGA9"
+    },
+    {
+      "name": "profile carol",
+      "sig": "4GqbP1kjjSXyqB9YyBmRXhQaZscPkLBjxLaREjpx7ZKeW5fb5DSQbyPer2xyzohkTEmUZM7z2sf7ZRdx1vZWuaW"
+    },
+    {
+      "name": "create",
+      "sig": "4rADB9eSFJ4noiFePExTtAyryah4Pu1fEDK7wmmJxke92kKBbAqncGZpfWWyVVuynxS7bvRoyfaVjqbh3Muu29gb"
+    },
+    {
+      "name": "Bob accepts",
+      "sig": "3CWgyY1ocHGbsSb6Hbt1b2qS7y3CveKwj1f75P4mQHNUeLUcBGxzxMBfFq19KKyfPacca51WfYzyn2fcikBn9sny"
+    },
+    {
+      "name": "Carol co-signs",
+      "sig": "2b8jdLcAhQFAD15zkYFrd5GwHsu9yMzfNoyf4URCpQ7SttDeL4PWvJUdKUoM5zqWfjyWGbJvQhin7EkBzbd86hxz"
+    },
+    {
+      "name": "Alice funds 50",
+      "sig": "3EmzuYwfGXVgjogpUwWmvxPi9S684oEvHv9bkkvnLVDppm4K2AF7VrPX4GnbwFd7tEEZNwY5AgEBpUgiK4tuvpFS"
+    },
+    {
+      "name": "Bob repays 20",
+      "sig": "4WsL2j7JDNFXzfsqMibb2t6183eGfvRHCsPnwQbG4QhkoZYS7qzhtxn1cyKKK6QZmx4C6oZFgD8QiQa6P32VTWqe"
+    },
+    {
+      "name": "Alice confirms 30 received by mobile money",
+      "sig": "JqMhwFvnv2yJ5VgtqzL2U56qW6ZYk9EVV3bimS6wuf83JR9i42Nke5NDEtt7XLAydnv1HWVTYnkDoVv3UxVZHkr"
+    },
+    {
+      "name": "create chama",
+      "sig": "5pp6zvzhbHgVRFzhMeFyYGF2Nuc17xc4sKKKVMBD8Smuu9nTeupNeATBMmuJaMqyRGCpaYKUMJjmnFGfid8Lz8Ju"
+    },
+    {
+      "name": "alice joins (bond 10)",
+      "sig": "2FhkZqF4TTVHKMFkVpfMLUX7SNvcjTs1HAArs91fcWdsYchssoWW1HTZ6ZDwAHLRkfGp1EesLuPBZePZ7S7LZqmT"
+    },
+    {
+      "name": "bob joins (bond 10)",
+      "sig": "3mY8QHiupFM5SKHZPby5X8r1AoQs26tLsYouBrE435BR5cqq8AJDAbv62kP1nA51NT8T4DWV9EfiPGLSncVQEbv2"
+    },
+    {
+      "name": "carol joins (bond 10)",
+      "sig": "4QAHx3Eq5xXttnCLxJU72G2jS1U919V9pXKz7DEjXYqC2DzCbw1ybpvDzeoZctm2BeRpKfgDooFvu9nWX4Nfj7e2"
+    },
+    {
+      "name": "R1 alice contributes",
+      "sig": "jz1hQ9VF9WSyvx7yuzEpbJ1EMXLDVdbJgrVPveKkBs7t1TyRN4L9KL7PTjjq8NPwYUMqCfi9ePFeWKaBvbnipCr"
+    },
+    {
+      "name": "R1 bob contributes",
+      "sig": "49fiQon69ycrT8s9zCUZ5YHRBCk5A8n7kTg5dDUWxGoRLCdfyN2fR7WCjTGLtdakakjrxiKq3y2TKvz27GJGC5Bs"
+    },
+    {
+      "name": "R1 carol contributes",
+      "sig": "4ECeZu1AKT9URu9p9VC92ge6vLqDdyd6xvspeugHHieVaoAmyFqCa74f1hLC9Vq5bgwdDAHBUfW1JEEEXzcFX58r"
+    },
+    {
+      "name": "R1 payout -> Alice",
+      "sig": "3bY33AfLMLvEPKsM3dE6F4sfZRziAfNuEtDsNocxVX88a3C3Qpj8JhV7FWt9G3BMVdoYP9uRMFmHXQWCAsMmpifD"
+    },
+    {
+      "name": "R2 alice contributes",
+      "sig": "a2eXXB66t4syxFssh8uJprTSLVzdSm6y7swnekpYtfYyVNLsfQ1FW1YrP2fvfcfwPB4N34hBC7ySU3RXCmm2U1H"
+    },
+    {
+      "name": "R2 bob contributes",
+      "sig": "5W1uRYdJgSmz7QHqMXFTyiNfqhG8pvJKpxiisuRqoDYpK2eT3vRjZFP72PyUSF8YcwghbYhG1WKRwXi2nu3s2pL"
+    },
+    {
+      "name": "R2 payout -> Bob (Carol's share from her bond)",
+      "sig": "52DLd9VRxWCzJhEybydRTwuxYHBaLC1yN9CwhLFRvdFNaNeHwTUivMVkaGyqTqf3sQfMooa21sQVxGRJYPhdnt83"
+    },
+    {
+      "name": "R3 alice contributes",
+      "sig": "2zsTXAAv4k32jacordFEqhKU5X7APePUtAHU6uhxBm9pfzR63DtADK3fBkZTvZbegjWfPfJ466tS2orxmDZChqwS"
+    },
+    {
+      "name": "R3 bob contributes",
+      "sig": "3fPhYsnuTHX9Qj3JMwW2sDkTMDtsu5wMyggzdcsFsHMRcqt3qvfvuSjwESVyaLCsemUu7Zd8UqR8dN1WGiUZLxp7"
+    },
+    {
+      "name": "R3 carol contributes",
+      "sig": "3rpUxu2QqKGvfaBCjuYrnLZrsyK9HbDnj9ncoGwTY3PZx98ou3kmBQqSqG7176a4aA11Ay5ViPVb5gcgRFc4ZyGt"
+    },
+    {
+      "name": "R3 payout -> Carol",
+      "sig": "5vzXXDx34nF4VYAtQhCpsgzYqMPsRbzZu96LQdtA8kVFfrRDdmZscaZRcwWpGPyj6Dqk7B7p1wZgm8uPiDLkjmKW"
+    },
+    {
+      "name": "alice withdraws bond",
+      "sig": "2jckMMLCD5u9wPfbHUbpFyiCoz2qS7hRY1945a5iJYVWX8byCmVrpXnur5M3K1LePgKS1jj6K2mvrxNWVUZYwcNw"
+    },
+    {
+      "name": "bob withdraws bond",
+      "sig": "47Jxe16hipowpZNVNqgXnpnsTx7V6DRkLFgyzCs7GbnYmRfAMde4iwhkQBxoFwzSabcjhLTznpMkaYZSLYAPatGH"
+    },
+    {
+      "name": "carol withdraws bond",
+      "sig": "2gJUuKuApvpZyqpGq9rRNS4GRXTJEzNRnTc2KcRmbzw5jVHSm8MfBXPLMdJwsmXkDunbDgCsdpVTLRdesJgENKST"
+    }
+  ]
+}
