@@ -793,6 +793,89 @@ export type Fungu = {
       "args": []
     },
     {
+      "name": "registerName",
+      "docs": [
+        "Claims a Fungu name (@name) for the signer. First come, first served; one name per",
+        "wallet, permanent. Lower-case letters, digits and \"_\", 3-20 characters, starting with a letter.",
+        "Two records make both directions a single lookup: name -> owner and owner -> name."
+      ],
+      "discriminator": [
+        101,
+        120,
+        221,
+        151,
+        68,
+        123,
+        191,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "nameRecord",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "name"
+              }
+            ]
+          }
+        },
+        {
+          "name": "handle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  110,
+                  100,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "repay",
       "docs": [
         "The borrower repays part or all of what is left, wallet to wallet."
@@ -969,6 +1052,19 @@ export type Fungu = {
       ]
     },
     {
+      "name": "nameRecord",
+      "discriminator": [
+        254,
+        22,
+        17,
+        161,
+        229,
+        49,
+        238,
+        105
+      ]
+    },
+    {
       "name": "profile",
       "discriminator": [
         184,
@@ -1123,6 +1219,11 @@ export type Fungu = {
       "code": 6019,
       "name": "alreadyWithdrawn",
       "msg": "Bond already withdrawn"
+    },
+    {
+      "code": 6020,
+      "name": "invalidName",
+      "msg": "Names are 3-20 lower-case letters, digits or _, starting with a letter"
     }
   ],
   "types": [
@@ -1381,6 +1482,26 @@ export type Fungu = {
           },
           {
             "name": "completed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "nameRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

@@ -787,6 +787,89 @@
       "args": []
     },
     {
+      "name": "register_name",
+      "docs": [
+        "Claims a Fungu name (@name) for the signer. First come, first served; one name per",
+        "wallet, permanent. Lower-case letters, digits and \"_\", 3-20 characters, starting with a letter.",
+        "Two records make both directions a single lookup: name -> owner and owner -> name."
+      ],
+      "discriminator": [
+        101,
+        120,
+        221,
+        151,
+        68,
+        123,
+        191,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "name_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "name"
+              }
+            ]
+          }
+        },
+        {
+          "name": "handle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  110,
+                  100,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "repay",
       "docs": [
         "The borrower repays part or all of what is left, wallet to wallet."
@@ -963,6 +1046,19 @@
       ]
     },
     {
+      "name": "NameRecord",
+      "discriminator": [
+        254,
+        22,
+        17,
+        161,
+        229,
+        49,
+        238,
+        105
+      ]
+    },
+    {
       "name": "Profile",
       "discriminator": [
         184,
@@ -1117,6 +1213,11 @@
       "code": 6019,
       "name": "AlreadyWithdrawn",
       "msg": "Bond already withdrawn"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidName",
+      "msg": "Names are 3-20 lower-case letters, digits or _, starting with a letter"
     }
   ],
   "types": [
@@ -1375,6 +1476,26 @@
           },
           {
             "name": "Completed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NameRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
