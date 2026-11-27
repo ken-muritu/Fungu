@@ -93,3 +93,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--i
 .terms { white-space: pre-wrap; background: var(--paper); border: 1px dashed var(--line); border-radius: 10px; padding: 12px; font-size: 14px; }
 .ring { flex: none; }
 .empty { text-align: center; color: var(--muted); padding: 18px 0; }
+.install { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 50; display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; box-shadow: 0 10px 30px rgba(18, 35, 61, .14); max-width: 520px; margin: 0 auto; }
+.install img { border-radius: 10px; }
+.install .grow { flex: 1; min-width: 0; }

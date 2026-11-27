@@ -47,6 +47,7 @@ export default function FunguApp() {
     if (to) { setPrefill({ to, name: n || "" }); if (n) names.set(to, n); setTab("debts"); }
     if (a) { if (t) { try { termsStore.set(a, b64u.dec(t)); } catch { /* ignore */ } } setFocus({ kind: "agreement", address: a }); setTab("debts"); }
     if (c) { setFocus({ kind: "chama", address: c }); setTab("chamas"); }
+    const tb = q.get("tab"); if (tb === "debts" || tb === "chamas" || tb === "me") setTab(tb);
     setReady(true);
   }, []);
 
