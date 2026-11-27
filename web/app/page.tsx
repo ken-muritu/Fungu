@@ -9,9 +9,9 @@ export default function Home() {
         <div className="wrap">
           <Logo />
           <nav className="nav">
-            <a className="hide-sm" href="#how">How it works</a>
-            <a className="hide-sm" href="#chamas">Chamas</a>
-            <a className="hide-sm" href="#trust">Trust</a>
+            <a className="navlink hide-sm" href="#how">How it works</a>
+            <a className="navlink hide-sm" href="#chamas">Chamas</a>
+            <a className="navlink hide-sm" href="/security">Security</a>
             <a className="btn small" href="/app">Open app</a>
           </nav>
         </div>
@@ -93,7 +93,10 @@ export default function Home() {
       <footer className="foot">
         <div className="wrap">
           <span>© 2026 Fungu, by Daelus · Nairobi</span>
-          <span>Program <code>{PROGRAM.slice(0, 6)}…{PROGRAM.slice(-4)}</code> on Solana devnet · <a href="https://github.com/ken-muritu/Fungu">Source</a></span>
+          <nav className="footnav" aria-label="Footer">
+            <a href="/security">Security</a><a href="/help">Help</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+            <a href={`https://explorer.solana.com/address/${PROGRAM}?cluster=devnet`}>Program</a><a href="https://github.com/ken-muritu/Fungu">Source</a>
+          </nav>
         </div>
       </footer>
     </>

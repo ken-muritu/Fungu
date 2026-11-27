@@ -1,55 +1,62 @@
 # Fungu
 
-Track a debt between two people — with a due date, an optional guarantor, and a direct mobile-money payment request — so the debt gets settled instead of quietly wrecking the friendship. Kenya-first, built on M-Pesa/STK Push.
+**Lend to friends without losing them.** Fungu writes down what was agreed between friends or in a chama, who owes what and by when, and lets the money settle phone to phone on Solana. Fungu never lends and never holds your money.
 
-See [`BRAINSTORM.md`](./BRAINSTORM.md) for the full brainstorm and due-diligence doc (market validation, competitive landscape, regulatory read, naming research, tech stack notes), and [`MVP-PRD.md`](./MVP-PRD.md) for the actual v1 scope, core user flow, and open risks.
+**Live:** [fungu.daelus.co.ke](https://fungu.daelus.co.ke) · **App:** [fungu.daelus.co.ke/app](https://fungu.daelus.co.ke/app) (installable PWA) · Solana **devnet**, free test dollars (fUSD)
 
-**Regulatory note, updated during the build:** the original framing was "the app never holds funds." Building the actual STK Push integration surfaced that this isn't quite right — Safaricom's public API can only push a payment prompt into a business shortcode, so a borrower's payment lands in Fungu's own account first and is then forwarded to the lender via a second (B2C) call. Funds transit a Fungu-controlled account, briefly. See the header comment in [`server/src/lib/mpesa.ts`](./server/src/lib/mpesa.ts) and §6 of `MVP-PRD.md` — this needs a lawyer's read before any real money moves through it, and the regulatory question is now more specifically about Payment Service Provider treatment, not just DCP licensing.
+Name: *fungu* is Swahili for share, portion, instalment.
+
+## What it does
+
+- **Debts between friends.** The lender writes the terms. The borrower accepts the exact wording, which is stored on-chain as a hash, and an optional guarantor co-signs. Money goes wallet to wallet. Repay in portions, with no overpayment. The lender can confirm a cash or mobile-money repayment (only the lender, so nobody can fake one). Overdue is a quiet flag, never a penalty, and the lender can forgive the rest.
+- **Chamas (2 to 12 members).** A fixed contribution each round, with the payout rotating in join order. Anyone can trigger a payout once everyone has paid or time is up. Each member stakes a refundable bond, so a member who walks away after being paid is covered from their own bond. The pot sits in a vault with **no admin key**.
+- **@names.** Claim `@wanjiru` on-chain and friends can lend to you without copying an address.
+- **Shilling estimates.** Balances show an approximate KSh value from a live USD→KES rate.
+- **Gasless.** Fungu sponsors every network fee. You don't need SOL or crypto knowledge.
+- **A public record, not a credit score.** It counts debts settled on time or late and chama cycles completed.
+
+## Security
+
+Your key is created on your phone and never leaves it. Details are at [fungu.daelus.co.ke/security](https://fungu.daelus.co.ke/security).
+
+- **PIN lock:** PBKDF2-SHA256 (310k rounds) then AES-GCM. Back-off doubles after 5 wrong PINs, and the app auto-locks.
+- **Fingerprint or face unlock:** a WebAuthn passkey with the PRF extension, then HKDF and AES-GCM.
+- **WhatsApp backup:** the backup is encrypted on the phone before upload. The server stores only a keyed HMAC of your number. Restore codes are delivered over WhatsApp and rate-limited.
+- **Authenticator (TOTP, RFC 6238):** an optional second step for restore. 5 wrong codes lock restore for an hour.
+- **Bot checks:** Cloudflare Turnstile guards name claims and code requests.
 
 ## On Solana (devnet)
 
 | | |
 |---|---|
-| Program | [`6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE`](https://explorer.solana.com/address/6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE?cluster=devnet) (Anchor 1.2.2) |
-| Source | [`programs/fungu/src/lib.rs`](programs/fungu/src/lib.rs) |
-| Client | [`sdk/`](sdk): IDL, types, and an end-to-end test against the live program |
-
-What the program does:
-- **Debts between friends:** the lender proposes, the borrower accepts the exact terms (stored as a hash), an optional guarantor co-signs. Funding and repayments go wallet to wallet; Fungu never holds the money. Partial repayment, no overpayment. The lender can confirm a cash or mobile-money repayment on-chain (only the lender can, so a borrower can't fake one). Overdue is a flag, never a penalty, and the lender can forgive the rest.
-- **Chamas (2 to 12 members):** fixed contribution per round, payout rotates in join order, anyone can trigger a payout once everyone has paid or time is up. Each member stakes a refundable bond; a member who misses a round after being paid is covered from their own bond, and the miss is recorded. The pot sits in a vault only the program's rules can move: there is no admin key.
-- **Profiles:** a public count of debts settled (on time or late) and chama cycles completed. Not a credit score.
-- **Gasless:** every instruction takes a separate fee payer, so the app can sponsor fees. No personal data goes on-chain.
-
-Run the end-to-end test (one debt + a full 3-member chama, 27 transactions):
-
-```
-cd sdk && npm install && SPONSOR_KEYPAIR=~/.config/solana/id.json npm run e2e
-```
-
-Built during the Dev3pack Global Hackathon (27–29 Nov 2026): the Solana program, the SDK and the end-to-end test. The ledger app and API in `app/` and `server/` existed before the hackathon (Aug 2026).
+| Program | [`6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE`](https://explorer.solana.com/address/6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE?cluster=devnet) (Anchor) |
+| Source | [`programs/fungu/src/lib.rs`](programs/fungu/src/lib.rs), built and deployed by [`solana.yml`](.github/workflows/solana.yml) |
+| SDK | [`sdk/`](sdk): IDL, types and an end-to-end test against the live program |
 
 ## Code
 
-- [`app/`](./app) — Flutter client (Android + iOS from one codebase), see `app/README.md`
-- [`server/`](./server) — Next.js API backend (Turso/Drizzle), see `server/README.md`
-- [`.github/workflows/build-apk.yml`](./.github/workflows/build-apk.yml) and [`build-web.yml`](./.github/workflows/build-web.yml) — build the release APK and the web (PWA) bundle in CI
+- [`web/`](web): the Fungu site and app (Next.js 15, React 19, `@solana/web3.js`), hosted on Vercel. The app pages are `/`, `/app`, `/security`, `/help`, `/privacy` and `/terms`. API routes: `/api/sponsor` (fee payer), `/api/rpc`, `/api/faucet`, `/api/recovery` (backup and restore) and `/api/rate`.
+- [`programs/`](programs): the Anchor program.
+- [`sdk/`](sdk): the client SDK and its e2e test.
+- [`app/`](app) and [`server/`](server): the earlier Flutter + Next.js/Turso ledger (Aug 2026), which used M-Pesa STK Push. It is kept for history. That design routed payments through a business shortcode, which raised payment-service-provider questions (see [`MVP-PRD.md`](MVP-PRD.md) §6). The Solana version avoids this because money moves wallet to wallet.
+- [`research/`](research), [`BRAINSTORM.md`](BRAINSTORM.md): market, regulatory and naming research.
 
-`research/` holds supporting research pulled in to inform the brainstorm. It lists videos and channels with their public stats. Video transcripts and audience comments were used during the research but are not included here; the scripts can fetch them again.
-- `youtube-research.md` — scoped to Fungu's specific peer-debt/IOU themes (Fuliza/debt culture, CBK/DCP regulation, chama/P2P lending, STK Push, financial literacy, competitor bill-splitting apps)
-- `youtube-research-expansion.md` — broader pass: the wider Kenya startup ecosystem, African fintech beyond Kenya (Flutterwave, Paystack, Chipper Cash, OPay), global consumer money-app patterns (Venmo, Cash App, Revolut, BNPL) for feature/UX inspiration, and money-tech infrastructure (embedded finance, USSD, super apps, neobanks)
-- `youtube-research-channels.md` — channel-level deep dive on Financially Incorrect, Matt & Ari, and Y Combinator plus 32 related channels discovered from them (full upload histories, stats, comments) — not just keyword search hits
-- `youtube-research-buildability.md` — build-and-ship focus: Programming with Mosh + related dev channels, startup-failure postmortems, and the Flutter/React Native/PWA/APK delivery decision
-- `youtube-research-channels-2.md` — Tano (AI company building in public), Starter Story (**complete** upload history, ~495 videos), Greg Isenberg, plus 16 related channels (Dan Martell, Chris Koerner, The Diary Of A CEO, and others)
-- `youtube_search.py` / `youtube_search_expansion.py` / `youtube_channels.py` / `youtube_search_buildability.py` / `youtube_channels_2.py` — the scripts, reusable, add query/handle/channel entries and re-run
+## Tests
 
-## Status
+From `web/`, each suite runs against devnet and the live deployment:
 
-- **Built:** the MVP v1 code. That's the Flutter client (Android, plus a web/PWA build), the Next.js + Turso API with phone + PIN auth, the debt ledger, guarantors, one soft SMS reminder per overdue debt (Africa's Talking), and the M-Pesa STK Push + B2C integration.
-- **Deployed (manual Vercel deploys):** web app at [fungu-web.vercel.app](https://fungu-web.vercel.app), API at [fungu-api.vercel.app](https://fungu-api.vercel.app).
-- **Before real money moves through it:** the payment flow needs the legal review described above (PSP and DCP questions), and the name still needs a trademark check. See Open Questions in `BRAINSTORM.md` and §9 of `MVP-PRD.md`.
+```
+node --import tsx scripts/app-e2e.mts                                   # 28 checks: debts, guarantors, repayments, chamas, bonds, @names
+node --conditions=react-server --import tsx scripts/recovery-test.mts   # 19 checks: phone hashing, tickets, TOTP, lockouts
+node scripts/pwa-check.mjs                                              # service worker + offline page
+```
 
-Name: **Fungu** (Swahili: share, portion, installment).
+Program e2e (one debt plus a full 3-member chama): `cd sdk && npm install && SPONSOR_KEYPAIR=~/.config/solana/id.json npm run e2e`.
+
+## Hackathon
+
+Built for the Dev3pack Global Hackathon (27–29 Nov 2026). Built during the hackathon: the Solana program, SDK, web app, security layer and @names. The Flutter ledger in `app/` and `server/` came before it.
 
 ## Licence
 
-Open source. The app and server are under the [GNU AGPL v3.0](LICENSE); the Solana program and SDK are under Apache 2.0. The Fungu name and logo are trademarks and are not licensed. See [NOTICE](NOTICE).
+The app and server are under [GNU AGPL v3.0](LICENSE). The Solana program and SDK are under Apache 2.0. The Fungu name and logo are trademarks and are not licensed. See [NOTICE](NOTICE). Line icons are from [Lucide](https://lucide.dev) (ISC).

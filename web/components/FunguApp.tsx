@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Logo, Ring } from "./Brand";
+import { IChama, IDebts, IHome, IMe, IPlus, IRefresh } from "./Icons";
 import { Turnstile } from "./Turnstile";
 import { BackupFlow, LockScreen, NewPin, RestoreFlow, SecurityCard } from "./Security";
 import { vault } from "@/lib/vault";
@@ -50,6 +51,8 @@ export default function FunguApp() {
   const [profile, setProfile] = useState<any>(null);
   const [focus, setFocus] = useState<{ kind: "agreement" | "chama"; address: string } | null>(null);
   const [prefill, setPrefill] = useState<{ to?: string; name?: string }>({});
+  const [startNew, setStartNew] = useState(0); // bumps to open the "new" form on Debts/Chamas
+  const [myHandle, setMyHandle] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/rate").then((r) => r.json()).then((j) => { if (j.kes) { kesRate = j.kes; setHandlesTick((n) => n + 1); } }).catch(() => {});
@@ -68,7 +71,9 @@ export default function FunguApp() {
     const [b, d, c, p] = await Promise.all([balance(me.publicKey), fetchAgreements(me.publicKey).catch(() => []), fetchChamas(me.publicKey).catch(() => []), fetchProfile(me.publicKey).catch(() => null)]);
     setBal(b); setDebts(d); setChamas(c); setProfile(p);
   }, [me]);
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refresh(); if (me) handleOf(me.publicKey).then(setMyHandle); }, [refresh, me]);
+  // success and progress notes clear themselves; errors stay until the next action
+  useEffect(() => { if (msg && msg.kind !== "err" && !busy) { const t = setTimeout(() => setMsg(null), 6000); return () => clearTimeout(t); } }, [msg, busy]);
 
   // the key is only ever in memory while unlocked; 5 minutes away from the app locks it again
   useEffect(() => {
@@ -107,12 +112,12 @@ export default function FunguApp() {
 
   if (!ready) return null;
   if (!me) {
-    const shell = (body: React.ReactNode) => <><header className="top"><div className="wrap"><Logo /><nav className="nav"><a className="small" href="/">About Fungu</a></nav></div></header><main className="app">{body}</main></>;
+    const shell = (body: React.ReactNode) => <><header className="top"><div className="wrap"><Logo /><nav className="nav"><a className="navlink" href="/">About Fungu</a></nav></div></header><main className="app">{body}</main></>;
     if (gate === "lock") return <LockScreen onUnlock={setMe} onForgot={() => setGate("restore")} />;
     if (gate === "restore") return shell(<RestoreFlow onRestored={setMe} onCancel={() => setGate(vault.exists() ? "lock" : "new")} />);
     if (gate === "migrate") return shell(
       <div className="card stack">
-        <h2>Protect your wallet with a PIN</h2>
+        <h1>Protect your wallet with a PIN</h1>
         <p className="small">Fungu now locks your wallet on this phone. Choose a PIN; you&apos;ll use it (or your fingerprint) to open Fungu.</p>
         <NewPin onPin={async (p) => { const k = loadWallet()!; await vault.create(k, p); setMe(k); }} />
       </div>);
@@ -121,17 +126,20 @@ export default function FunguApp() {
 
   const owedToMe = debts.filter((d) => d.lender.equals(me.publicKey) && d.status === "active").reduce((s, d) => s + (d.principal.toNumber() - d.repaid.toNumber()), 0) / UNIT;
   const iOwe = debts.filter((d) => d.borrower.equals(me.publicKey) && d.status === "active").reduce((s, d) => s + (d.principal.toNumber() - d.repaid.toNumber()), 0) / UNIT;
-  const myLink = `${origin()}/app?to=${me.publicKey.toBase58()}&n=${encodeURIComponent(names.get()[me.publicKey.toBase58()] || "")}`;
+  const myLink = myHandle ? `${origin()}/app?to=@${myHandle}` : `${origin()}/app?to=${me.publicKey.toBase58()}`;
+  const TABS: [Tab, string, () => React.ReactElement][] = [["home", "Home", IHome], ["debts", "Debts", IDebts], ["chamas", "Chamas", IChama], ["me", "Me", IMe]];
+  const go = (t: Tab, open = false) => { setTab(t); setFocus(null); if (open) setStartNew((n) => n + 1); };
 
   return (
     <>
-      <header className="top"><div className="wrap"><Logo /><nav className="nav"><a className="small" href="/">About Fungu</a></nav></div></header>
+      <header className="top"><div className="wrap"><Logo /><nav className="nav"><a className="navlink" href="/">About Fungu</a></nav></div></header>
       <main className="app">
-        <div className="tabs" role="tablist">
-          {(["home", "debts", "chamas", "me"] as Tab[]).map((t) => (
-            <button key={t} role="tab" aria-selected={tab === t} onClick={() => { setTab(t); setFocus(null); }}>{{ home: "Home", debts: "Debts", chamas: "Chamas", me: "Me" }[t]}</button>
+        <h1 className="sr">Fungu · {TABS.find((x) => x[0] === tab)![1]}</h1><h2 className="sr">{TABS.find((x) => x[0] === tab)![1]}</h2>
+        <nav className="tabs" role="tablist" aria-label="Sections">
+          {TABS.map(([t, label, Icon]) => (
+            <button key={t} role="tab" aria-selected={tab === t} onClick={() => go(t)}><Icon /><span>{label}</span></button>
           ))}
-        </div>
+        </nav>
 
         {msg && (
           <div className={`notice ${msg.kind === "err" ? "err" : msg.kind === "ok" ? "ok" : ""}`} style={{ marginBottom: 16 }}>
@@ -141,17 +149,25 @@ export default function FunguApp() {
 
         {tab === "home" && (
           <div className="stack">
-            <div className="card balance">
-              <div><div className="small">Your balance</div><div className="amt">{fmt(bal)} <span className="small">fUSD</span></div><div className="small">{ksh(bal)}</div></div>
-              <button className="btn ghost small" onClick={refresh} disabled={busy}>Refresh</button>
-            </div>
+            <section className="wallet" aria-label="Your balance">
+              <div className="wallet-top">
+                <span>{myHandle ? `@${myHandle}` : "Your wallet"}</span>
+                <button className="iconbtn" onClick={() => refresh()} disabled={busy} aria-label="Refresh balance"><IRefresh /></button>
+              </div>
+              <div className="wallet-amt"><b>{fmt(bal)}</b> <span>fUSD</span></div>
+              <div className="wallet-kes">{ksh(bal) || "\u00a0"}</div>
+              <div className="wallet-actions">
+                <button className="btn chai" onClick={() => go("debts", true)}><IPlus />Lend to a friend</button>
+                <button className="btn onink" onClick={() => go("chamas", true)}>Start a chama</button>
+              </div>
+            </section>
             <div className="two">
-              <div className="card"><div className="small">Owed to you</div><div className="amt" style={{ fontSize: 24, fontFamily: "var(--display)" }}>{fmt(owedToMe)}</div><div className="small">{ksh(owedToMe)}</div></div>
-              <div className="card"><div className="small">You owe</div><div className="amt" style={{ fontSize: 24, fontFamily: "var(--display)" }}>{fmt(iOwe)}</div><div className="small">{ksh(iOwe)}</div></div>
+              <div className="card stat"><div className="small">Owed to you</div><div className="fig">{fmt(owedToMe)}</div><div className="small">{ksh(owedToMe)}</div></div>
+              <div className="card stat"><div className="small">You owe</div><div className="fig">{fmt(iOwe)}</div><div className="small">{ksh(iOwe)}</div></div>
             </div>
             <div className="card">
               <h3>Your Fungu link</h3>
-              <p className="small">Send this to a friend who is lending you money. It opens Fungu with your details filled in.</p>
+              <p className="small">{myHandle ? <>Friends can find you as <b>@{myHandle}</b>, or open this link to lend to you directly.</> : "Send this to a friend who is lending you money. It opens Fungu with your details filled in."}</p>
               <div className="row">
                 <button className="btn small" onClick={() => { navigator.clipboard.writeText(myLink); setMsg({ kind: "ok", text: "Link copied." }); }}>Copy link</button>
                 <a className="btn ghost small" href={wa(`Hi, here's my Fungu link so we can keep our agreement clear: ${myLink}`)} target="_blank" rel="noreferrer">Share on WhatsApp</a>
@@ -159,7 +175,7 @@ export default function FunguApp() {
             </div>
             <div className="card">
               <h3>Recent</h3>
-              {debts.length + chamas.length === 0 && <p className="empty">Nothing yet. Start a debt or a chama.</p>}
+              {debts.length + chamas.length === 0 && <p className="empty">Nothing yet. Your agreements and chamas show up here.</p>}
               {debts.slice(0, 3).map((d) => <DebtRow key={d.address.toBase58()} d={d} me={me.publicKey} onOpen={() => { setTab("debts"); setFocus({ kind: "agreement", address: d.address.toBase58() }); }} />)}
               {chamas.slice(0, 2).map((c) => <ChamaRow key={c.address.toBase58()} c={c} onOpen={() => { setTab("chamas"); setFocus({ kind: "chama", address: c.address.toBase58() }); }} />)}
             </div>
@@ -168,11 +184,11 @@ export default function FunguApp() {
 
         {tab === "debts" && (focus?.kind === "agreement"
           ? <AgreementView address={focus.address} me={me} busy={busy} run={run} onBack={() => setFocus(null)} />
-          : <Debts me={me} debts={debts} busy={busy} run={run} prefill={prefill} onOpen={(a) => setFocus({ kind: "agreement", address: a })} />)}
+          : <Debts key={`d${startNew}`} startOpen={startNew > 0} me={me} debts={debts} busy={busy} run={run} prefill={prefill} onOpen={(a) => setFocus({ kind: "agreement", address: a })} />)}
 
         {tab === "chamas" && (focus?.kind === "chama"
           ? <ChamaView address={focus.address} me={me} busy={busy} run={run} onBack={() => setFocus(null)} />
-          : <Chamas me={me} chamas={chamas} busy={busy} run={run} onOpen={(a) => setFocus({ kind: "chama", address: a })} />)}
+          : <Chamas key={`c${startNew}`} startOpen={startNew > 0} me={me} chamas={chamas} busy={busy} run={run} onOpen={(a) => setFocus({ kind: "chama", address: a })} />)}
 
         {tab === "me" && <Me me={me} profile={profile} onLock={() => { setMe(null); setGate("lock"); }} />}
       </main>
@@ -223,12 +239,12 @@ function Onboarding({ onReady, onRestore }: { onReady: (k: Keypair, landing?: Ta
   const at = order.indexOf(step === "making" ? "pin" : step);
   return (
     <>
-      <header className="top"><div className="wrap"><Logo /><nav className="nav"><a className="small" href="/">About Fungu</a></nav></div></header>
+      <header className="top"><div className="wrap"><Logo /><nav className="nav"><a className="navlink" href="/">About Fungu</a></nav></div></header>
       <main className="app stack">
         <ol className="steps" aria-label={`Step ${at + 1} of 4`}>{["Start", "Name", "PIN", "Backup"].map((x, i) => <li key={x} className={i <= at ? "on" : ""}>{x}</li>)}</ol>
         {step === "why" && (
           <div className="card stack">
-            <h2>What brings you to Fungu?</h2>
+            <h1>What brings you to Fungu?</h1>
             <button className="choice" onClick={() => { setLanding("debts"); setStep("name"); }}><b>Lending to or borrowing from a friend</b><span>Write down what you agreed. Repay bit by bit.</span></button>
             <button className="choice" onClick={() => { setLanding("chamas"); setStep("name"); }}><b>Running a chama</b><span>Rounds, payouts and bonds nobody can fiddle with.</span></button>
             <button className="linkbtn" onClick={onRestore}>I already have Fungu on another phone</button>
@@ -236,7 +252,7 @@ function Onboarding({ onReady, onRestore }: { onReady: (k: Keypair, landing?: Ta
         )}
         {step === "name" && (
           <div className="card stack">
-            <h2>Pick your Fungu name</h2>
+            <h1>Pick your Fungu name</h1>
             <p className="small">Friends send you agreements by this name instead of a long address. It&apos;s public and permanent.</p>
             <div className="field"><label htmlFor="hn">Fungu name</label>
               <div className="at"><span>@</span><input id="hn" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20))} placeholder="wanjiru" autoCapitalize="none" autoComplete="username" /></div></div>
@@ -247,11 +263,11 @@ function Onboarding({ onReady, onRestore }: { onReady: (k: Keypair, landing?: Ta
             <button className="btn" disabled={avail !== "free" || !token} onClick={() => setStep("pin")}>Continue</button>
           </div>
         )}
-        {step === "pin" && <div className="card stack"><h2>Lock it with a PIN</h2><p className="small">Your wallet lives on this phone, encrypted with this PIN. Fungu never sees it.</p><NewPin onPin={make} /></div>}
-        {step === "making" && <div className="card stack"><h2>Setting up</h2><p className="small" aria-live="polite">{state}</p></div>}
+        {step === "pin" && <div className="card stack"><h1>Lock it with a PIN</h1><p className="small">Your wallet lives on this phone, encrypted with this PIN. Fungu never sees it.</p><NewPin onPin={make} /></div>}
+        {step === "making" && <div className="card stack"><h1>Setting up</h1><p className="small" aria-live="polite">{state}</p></div>}
         {step === "backup" && kp && (
           <div className="card stack">
-            <h2>Back it up before you hold money</h2>
+            <h1>Back it up before you hold money</h1>
             {err && <div className="notice err">{err}</div>}
             <BackupFlow me={kp} onDone={() => onReady(kp, landing)} />
             <button className="linkbtn" onClick={() => onReady(kp, landing)}>Skip for now (Me → Security later)</button>
@@ -287,7 +303,7 @@ function DebtRow({ d, me, onOpen }: { d: any; me: PublicKey; onOpen: () => void 
   );
 }
 
-function Debts({ me, debts, busy, run, prefill, onOpen }: { me: Keypair; debts: any[]; busy: boolean; run: any; prefill: { to?: string; name?: string }; onOpen: (a: string) => void }) {
+function Debts({ me, debts, busy, run, prefill, onOpen, startOpen }: { me: Keypair; debts: any[]; busy: boolean; run: any; prefill: { to?: string; name?: string }; onOpen: (a: string) => void; startOpen?: boolean }) {
   const [to, setTo] = useState(prefill.to || "");
   const [who, setWho] = useState(prefill.name || "");
   const [amount, setAmount] = useState("");
@@ -295,7 +311,7 @@ function Debts({ me, debts, busy, run, prefill, onOpen }: { me: Keypair; debts: 
   const [due, setDue] = useState(() => new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
   const [guarantor, setGuarantor] = useState("");
   const [created, setCreated] = useState<{ link: string; text: string } | null>(null);
-  const [open, setOpen] = useState(!!prefill.to);
+  const [open, setOpen] = useState(!!prefill.to || !!startOpen);
 
   const submit = async () => {
     const borrower = await toKey(to);
@@ -351,7 +367,7 @@ function Debts({ me, debts, busy, run, prefill, onOpen }: { me: Keypair; debts: 
             </div>
             <div className="field"><label>What it&apos;s for</label><input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="e.g. rent for December" maxLength={80} /></div>
             <div className="field"><label>Pay back by</label><input type="date" value={due} min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)} onChange={(e) => setDue(e.target.value)} /></div>
-            <div className="field"><label>Guarantor (optional): their Fungu link or address</label><input value={guarantor} onChange={(e) => setGuarantor(e.target.value)} /></div>
+            <div className="field"><label>Guarantor (optional): their @name or Fungu link</label><input value={guarantor} onChange={(e) => setGuarantor(e.target.value)} /></div>
             <div className="notice" style={{ marginBottom: 14 }}>
               <strong>Before you lend:</strong> can you afford to wait if it comes back late? Have you agreed what happens if it can&apos;t be repaid on time? Lend only what you could live without.
             </div>
@@ -361,7 +377,7 @@ function Debts({ me, debts, busy, run, prefill, onOpen }: { me: Keypair; debts: 
       </div>
       <div className="card">
         <h3>Your debts</h3>
-        {debts.length === 0 && <p className="empty">No debts yet.</p>}
+        {debts.length === 0 && <p className="empty">No agreements yet. When you lend or borrow, it shows up here with its progress ring.</p>}
         {debts.map((d) => <DebtRow key={d.address.toBase58()} d={d} me={me.publicKey} onOpen={() => onOpen(d.address.toBase58())} />)}
       </div>
     </div>
@@ -409,7 +425,7 @@ function AgreementView({ address, me, busy, run, onBack }: { address: string; me
           </div>
           <span className={`pill ${a.status}`}>{statusLabel(a, mk)}</span>
         </div>
-        <div className="small">Paid {fmt(a.repaid)} · left {fmt(left)} · {a.funded ? "sent on Fungu" : "money given outside Fungu or not yet sent"}{a.guarantor ? ` · guarantor ${nameOf(a.guarantor, mk)} ${a.guarantorSigned ? "has signed" : "hasn't signed yet"}` : ""}</div>
+        <div className="small">Paid {fmt(a.repaid)} · left {fmt(left)} · {a.funded ? "sent on Fungu" : a.status === "proposed" ? "not sent yet" : "money given outside Fungu"}{a.guarantor ? ` · guarantor ${nameOf(a.guarantor, mk)} ${a.guarantorSigned ? "has signed" : "hasn't signed yet"}` : ""}</div>
         {terms ? (
           <>
             <div className="terms">{terms}</div>
@@ -487,8 +503,8 @@ function ChamaRow({ c, onOpen }: { c: any; onOpen: () => void }) {
   );
 }
 
-function Chamas({ me, chamas, busy, run, onOpen }: { me: Keypair; chamas: any[]; busy: boolean; run: any; onOpen: (a: string) => void }) {
-  const [open, setOpen] = useState(false);
+function Chamas({ me, chamas, busy, run, onOpen, startOpen }: { me: Keypair; chamas: any[]; busy: boolean; run: any; onOpen: (a: string) => void; startOpen?: boolean }) {
+  const [open, setOpen] = useState(!!startOpen);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("10");
   const [members, setMembers] = useState("3");
@@ -526,7 +542,7 @@ function Chamas({ me, chamas, busy, run, onOpen }: { me: Keypair; chamas: any[];
       </div>
       <div className="card">
         <h3>Your chamas</h3>
-        {chamas.length === 0 && <p className="empty">No chamas yet. Start one, or open an invite link.</p>}
+        {chamas.length === 0 && <p className="empty">No chamas yet. Start one above, or open an invite link a member sent you.</p>}
         {chamas.map((c) => <ChamaRow key={c.address.toBase58()} c={c} onOpen={() => onOpen(c.address.toBase58())} />)}
       </div>
     </div>

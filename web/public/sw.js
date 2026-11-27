@@ -1,6 +1,6 @@
 // Fungu service worker: the app shell works offline; money data is never cached.
 // /api/* (sponsor, rpc, faucet) always goes to the network, so balances are never served stale.
-const V = "fungu-v1";
+const V = "fungu-v2";
 const SHELL = ["/app", "/offline.html", "/icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

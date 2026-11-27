@@ -251,7 +251,7 @@ export function RestoreFlow({ onRestored, onCancel }: { onRestored: (k: Keypair)
   return (
     <div className="stack">
       <div className="card stack">
-        <h2>Restore your wallet</h2>
+        <h1>Restore your wallet</h1>
         {body}
         {err && <div className="notice err">{err}</div>}
       </div>

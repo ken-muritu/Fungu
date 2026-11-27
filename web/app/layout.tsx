@@ -9,10 +9,12 @@ const sans = Figtree({ subsets: ["latin"], variable: "--font-sans", weight: ["40
 export const metadata: Metadata = {
   metadataBase: new URL("https://fungu.daelus.co.ke"),
   title: "Fungu: lend to friends without losing them",
-  description: "Fungu keeps honest records of money between friends and in chamas: clear terms, partial repayments, guarantors and rotating payouts, settled on Solana. You hold your own money; Fungu never lends.",
+  description: "Honest records for money between friends and chamas: clear terms, repay in portions, guarantors and rotating payouts on Solana. Fungu never lends.",
+  alternates: { canonical: "/" },
   appleWebApp: { capable: true, title: "Fungu", statusBarStyle: "default" },
   icons: { icon: "/icons/favicon-32.png", apple: "/icons/apple-touch-icon.png" },
-  openGraph: { title: "Fungu", description: "Lend to friends without losing them. Debts and chamas, kept honest on Solana.", url: "https://fungu.daelus.co.ke", siteName: "Fungu" },
+  openGraph: { title: "Fungu", description: "Lend to friends without losing them. Debts and chamas, kept honest on Solana.", url: "https://fungu.daelus.co.ke", siteName: "Fungu", type: "website" },
+  twitter: { card: "summary_large_image" },
 };
 export const viewport: Viewport = { themeColor: "#0f1a2b", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
