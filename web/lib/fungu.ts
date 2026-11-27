@@ -8,7 +8,10 @@ import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAd
 import idl from "./idl.json";
 import { MINT, PROGRAM_ID, RPC_URL, SPONSOR, UNIT } from "./config";
 
-export const conn = new Connection(RPC_URL, "confirmed");
+// Reads go through our own /api/rpc (retries the rate-limited public endpoint); a custom
+// NEXT_PUBLIC_RPC_URL (e.g. a keyed provider) is used directly instead.
+const rpc = typeof window !== "undefined" && !process.env.NEXT_PUBLIC_RPC_URL ? `${window.location.origin}/api/rpc` : RPC_URL;
+export const conn = new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true });
 
 // ---------------------------------------------------------------- wallet
 // The key is generated and kept on this device only. Fungu's servers never see it.
