@@ -60,7 +60,8 @@ export async function send(ixs: TransactionInstruction[], signer: Keypair): Prom
   const tx = new Transaction().add(...ixs);
   tx.feePayer = SPONSOR;
   tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
-  tx.partialSign(signer);
+  // permissionless calls (mark past due, chama payout) need no user signature
+  if (ixs.some((i) => i.keys.some((k) => k.isSigner && k.pubkey.equals(signer.publicKey)))) tx.partialSign(signer);
   const r = await fetch("/api/sponsor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tx: tx.serialize({ requireAllSignatures: false }).toString("base64") }) });
   const j = await r.json();
   if (!j.ok) throw new Error(j.error || "transaction failed");
