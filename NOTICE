@@ -1,0 +1,14 @@
+Fungu
+Copyright (c) 2026 Kennedy Muritu
+
+Licensing:
+- The app (app/) and the API server (server/) are licensed under the
+  GNU Affero General Public License v3.0 (see LICENSE). If you run a
+  modified copy as a network service, you must publish your changes.
+- The Solana program and its client SDK (programs/, sdk/) are licensed
+  under the Apache License 2.0 (see the LICENSE file in those folders),
+  so wallets and partners can integrate with them freely.
+
+Trademarks: "Fungu" and the Fungu logo are trademarks of Kennedy Muritu.
+The licences above cover code only. They do not grant any right to use
+the Fungu name, logo or branding.

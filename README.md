@@ -30,4 +30,4 @@ Name: **Fungu** (Swahili: share, portion, installment).
 
 ## Licence
 
-Copyright © 2026 Kennedy Muritu. All rights reserved. The code is public to read, not to reuse. See [LICENSE](LICENSE).
+Open source. The app and server are under the [GNU AGPL v3.0](LICENSE); the Solana program and SDK are under Apache 2.0. The Fungu name and logo are trademarks and are not licensed. See [NOTICE](NOTICE).
