@@ -46,7 +46,7 @@ Your key is created on your phone and never leaves it. Details are at [fungu.dae
 From `web/`, each suite runs against devnet and the live deployment:
 
 ```
-node --import tsx scripts/app-e2e.mts                                   # 29 checks: debts, guarantors, repayments, chamas, bonds, @names
+node --import tsx scripts/app-e2e.mts                                   # 28 checks: debts, guarantors, repayments, chamas, bonds, @names
 node --conditions=react-server --import tsx scripts/recovery-test.mts   # 19 checks: phone hashing, tickets, TOTP, lockouts
 node scripts/pwa-check.mjs                                              # service worker + offline page
 ```
