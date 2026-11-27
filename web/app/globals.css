@@ -142,3 +142,6 @@ input.code { font: 700 24px var(--display); letter-spacing: .3em; text-align: ce
   .tabs button { font-size: 13px; padding: 10px 4px; border-radius: 12px; }
   .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; }
 }
+
+.btn.small { color: #fff; }
+.btn.ghost.small { color: var(--ink); }
