@@ -27,3 +27,6 @@ target/
 .anchor/
 node_modules/
 *-keypair.json
+.next/
+next-env.d.ts
+.vercel/
