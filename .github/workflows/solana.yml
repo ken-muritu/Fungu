@@ -1,0 +1,67 @@
+name: solana-program
+on:
+  push:
+    branches: [main]
+    paths: ["programs/**", "Anchor.toml", "Cargo.toml", ".github/workflows/solana.yml"]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy to devnet after building"
+        type: boolean
+        default: false
+concurrency:
+  group: solana-program
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.local/share/solana
+            ~/.cache/solana
+            target
+          key: sol-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/*/Cargo.toml') }}
+          restore-keys: sol-${{ runner.os }}-
+      - name: Install Solana CLI (Anza stable) and Anchor 1.2.2
+        run: |
+          [ -x "$HOME/.local/share/solana/install/active_release/bin/solana" ] || sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL -o "$HOME/.local/bin/anchor" https://github.com/otter-sec/anchor/releases/download/v1.2.2/anchor-1.2.2-x86_64-unknown-linux-gnu
+          chmod +x "$HOME/.local/bin/anchor"; echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Program keypair (fixed program ID)
+        env:
+          PROGRAM_KEYPAIR: ${{ secrets.FUNGU_PROGRAM_KEYPAIR }}
+        run: |
+          mkdir -p target/deploy
+          if [ -n "$PROGRAM_KEYPAIR" ]; then printf '%s' "$PROGRAM_KEYPAIR" > target/deploy/fungu-keypair.json; else echo "no program keypair secret: build only"; fi
+      - name: Build
+        run: anchor build
+      - name: Show outputs
+        run: ls -la target/deploy target/idl target/types; sha256sum target/deploy/fungu.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fungu-build
+          path: |
+            target/deploy/fungu.so
+            target/idl/fungu.json
+            target/types/fungu.ts
+          retention-days: 7
+      - name: Deploy to devnet
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy }}
+        env:
+          DEPLOY_KEYPAIR: ${{ secrets.FUNGU_DEVNET_DEPLOYER }}
+        run: |
+          mkdir -p ~/.config/solana
+          printf '%s' "$DEPLOY_KEYPAIR" > ~/.config/solana/id.json
+          solana config set --url https://api.devnet.solana.com
+          echo "deployer $(solana address) balance $(solana balance)"
+          solana program deploy target/deploy/fungu.so --program-id target/deploy/fungu-keypair.json --with-compute-unit-price 10000 --max-sign-attempts 50
+          solana program show 6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE
+          echo "balance after $(solana balance)"

@@ -23,3 +23,7 @@ node_modules/
 
 # fetched by research/fetch_transcripts.py (third-party content, not committed)
 research/transcripts/
+target/
+.anchor/
+node_modules/
+*-keypair.json
