@@ -231,7 +231,7 @@ function Debts({ me, debts, busy, run, prefill, onOpen }: { me: Keypair; debts: 
     if (guarantor.trim() && !g) return alert("The guarantor's link or address isn't valid.");
     if (who.trim()) names.set(borrower.toBase58(), who.trim());
     const amt = Number(amount);
-    const dueTs = Math.floor(new Date(due + "T21:00:00Z").getTime() / 1000); // end of the day in Nairobi (UTC+3)
+    const dueTs = Math.floor(new Date(due + "T20:59:59Z").getTime() / 1000); // end of the day in Nairobi (UTC+3)
     const myName = names.get()[me.publicKey.toBase58()] || "the lender";
     const terms = [
       "Fungu agreement",
@@ -341,7 +341,7 @@ function AgreementView({ address, me, busy, run, onBack }: { address: string; me
             <div className="terms">{terms}</div>
             <div className={`notice ${termsOk ? "ok" : "err"}`}>{termsOk ? "These are exactly the terms sealed on Solana." : "These terms don't match what's sealed on Solana. Don't accept."}</div>
           </>
-        ) : <div className="notice">The full wording isn&apos;t on this device. Ask the lender for the agreement link.</div>}
+        ) : <div className="notice">The full wording isn&apos;t on this device. Ask the lender to open this agreement in Fungu and tap &ldquo;Send on WhatsApp&rdquo;, then open the link they send.</div>}
         <a className="small" href={explorer("address", address)} target="_blank" rel="noreferrer">View on Solana ↗</a>
       </div>
 
@@ -353,7 +353,22 @@ function AgreementView({ address, me, busy, run, onBack }: { address: string; me
         <div className="card stack"><h3>Guarantee this debt?</h3><p className="small">You&apos;re vouching for {nameOf(a.borrower, mk)}. No money moves from you automatically.</p>
           <button className="btn" disabled={busy} onClick={() => act("Signing as guarantor", () => actions.cosign(me, key!, terms))}>I&apos;ll guarantee it</button></div>
       )}
-      {a.status === "proposed" && isLender && <button className="btn ghost" disabled={busy} onClick={() => act("Cancelling", () => actions.cancel(me, key!))}>Cancel this proposal</button>}
+      {a.status === "proposed" && isLender && (
+        <div className="card stack">
+          <h3>Send the agreement to {nameOf(a.borrower, mk)}</h3>
+          {terms ? (() => {
+            const link = `${origin()}/app?a=${address}&t=${b64u.enc(terms)}`;
+            return (<>
+              <p className="small">They open this link, read the exact terms and accept. {a.guarantor ? "Send the same link to the guarantor." : ""}</p>
+              <div className="row">
+                <a className="btn small" href={wa(`Hi, I've put our agreement on Fungu: ${fmt(a.principal)} fUSD, due ${dateOf(due)}. Please open it and accept: ${link}`)} target="_blank" rel="noreferrer">Send on WhatsApp</a>
+                <button className="btn ghost small" onClick={() => navigator.clipboard.writeText(link)}>Copy link</button>
+              </div>
+            </>);
+          })() : <p className="small">The terms were written on another device. Open this agreement there to share it.</p>}
+          <button className="btn ghost small" disabled={busy} onClick={() => act("Cancelling", () => actions.cancel(me, key!))}>Cancel this proposal</button>
+        </div>
+      )}
 
       {a.status === "active" && isLender && (
         <div className="card stack">
