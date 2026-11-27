@@ -35,6 +35,26 @@ pub mod fungu {
         Ok(())
     }
 
+    /// Claims a Fungu name (@name) for the signer. First come, first served; one name per
+    /// wallet, permanent. Lower-case letters, digits and "_", 3-20 characters, starting with a letter.
+    /// Two records make both directions a single lookup: name -> owner and owner -> name.
+    pub fn register_name(ctx: Context<RegisterName>, name: String) -> Result<()> {
+        let b = name.as_bytes();
+        require!(b.len() >= 3 && b.len() <= 20, FunguError::InvalidName);
+        require!(b[0].is_ascii_lowercase(), FunguError::InvalidName);
+        require!(b.iter().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == b'_'), FunguError::InvalidName);
+        let owner = ctx.accounts.user.key();
+        let n = &mut ctx.accounts.name_record;
+        n.owner = owner;
+        n.name = name.clone();
+        n.bump = ctx.bumps.name_record;
+        let h = &mut ctx.accounts.handle;
+        h.owner = owner;
+        h.name = name;
+        h.bump = ctx.bumps.handle;
+        Ok(())
+    }
+
     // ------------------------------------------------------------- agreements
 
     /// The lender proposes a debt. Nothing moves until the borrower accepts.
@@ -539,6 +559,30 @@ pub struct Chama {
 // ------------------------------------------------------------- instructions
 
 #[derive(Accounts)]
+#[instruction(name: String)]
+pub struct RegisterName<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub user: Signer<'info>,
+    #[account(init, payer = payer, space = 8 + NameRecord::INIT_SPACE,
+        seeds = [b"name", name.as_bytes()], bump)]
+    pub name_record: Account<'info, NameRecord>,
+    #[account(init, payer = payer, space = 8 + NameRecord::INIT_SPACE,
+        seeds = [b"handle", user.key().as_ref()], bump)]
+    pub handle: Account<'info, NameRecord>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct NameRecord {
+    pub owner: Pubkey,
+    #[max_len(20)]
+    pub name: String,
+    pub bump: u8,
+}
+
+#[derive(Accounts)]
 pub struct InitProfile<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -758,4 +802,6 @@ pub enum FunguError {
     RoundNotOver,
     #[msg("Bond already withdrawn")]
     AlreadyWithdrawn,
+    #[msg("Names are 3-20 lower-case letters, digits or _, starting with a letter")]
+    InvalidName,
 }
