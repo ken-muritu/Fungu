@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { Bricolage_Grotesque, Figtree } from "next/font/google";
 import "./globals.css";
 import { Pwa } from "@/components/Pwa";
 
-const display = Fraunces({ subsets: ["latin"], variable: "--font-display", weight: ["600"] });
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", weight: ["600", "700", "800"] });
+const sans = Figtree({ subsets: ["latin"], variable: "--font-sans", weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://fungu.daelus.co.ke"),
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   icons: { icon: "/icons/favicon-32.png", apple: "/icons/apple-touch-icon.png" },
   openGraph: { title: "Fungu", description: "Lend to friends without losing them. Debts and chamas, kept honest on Solana.", url: "https://fungu.daelus.co.ke", siteName: "Fungu" },
 };
-export const viewport: Viewport = { themeColor: "#12233d", width: "device-width", initialScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = { themeColor: "#0f1a2b", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

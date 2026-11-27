@@ -5,8 +5,8 @@ export function Ring({ value = 0.66, size = 26, stroke = 4 }: { value?: number; 
   const v = Math.max(0, Math.min(1, value));
   return (
     <svg className="ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e4ddd0" strokeWidth={stroke} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={v >= 1 ? "#2f7d5b" : "#d98e2b"} strokeWidth={stroke}
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e6ec" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={v >= 1 ? "#1f8a5b" : "#e8a33d"} strokeWidth={stroke}
         strokeLinecap="round" strokeDasharray={`${c * v} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
     </svg>
   );

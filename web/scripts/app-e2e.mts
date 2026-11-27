@@ -35,6 +35,14 @@ check((await f.balance(A.publicKey)) === 100, "test wallets funded with 100 fUSD
 for (const k of [A, B, G, C]) await f.actions.initProfile(k);
 check(!!(await f.fetchProfile(B.publicKey)), "profiles created (sponsored)");
 
+// ---- @names: claim, look up both ways, taken, one per wallet, bad format
+const nm = "t" + Date.now().toString(36).slice(-8);
+await f.actions.registerName(A, nm);
+check((await f.ownerOfName("@" + nm))?.equals(A.publicKey) === true && (await f.handleOf(A.publicKey)) === nm, `@${nm} claimed and resolves both ways`);
+await expectErr(f.actions.registerName(B, nm), /already in use|0x0|failed/i, "someone else can't take a claimed name");
+await expectErr(f.actions.registerName(A, nm + "x"), /already in use|0x0|failed/i, "one name per wallet");
+await expectErr(f.actions.registerName(B, "Bad-Name"), /InvalidName|Names are|6\d{3}|failed/i, "invalid name refused on-chain");
+
 // ---- debt 1: guarantor, fund, part repay on-chain, rest confirmed off-chain
 const terms = "Fungu agreement\nAmount: 30 fUSD\nPurpose: rent";
 const due = Math.floor(Date.now() / 1000) + 7 * 86400;

@@ -14,22 +14,15 @@ const rpc = typeof window !== "undefined" && !process.env.NEXT_PUBLIC_RPC_URL ? 
 export const conn = new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true });
 
 // ---------------------------------------------------------------- wallet
-// The key is generated and kept on this device only. Fungu's servers never see it.
+// The key is generated on this device and stored only encrypted (see vault.ts). Fungu's servers never see it.
 const WKEY = "fungu.wallet.v1";
+/** Wallets from before the PIN lock stored the key in the clear; read once to migrate into the vault. */
 export function loadWallet(): Keypair | null {
   const raw = localStorage.getItem(WKEY);
   return raw ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(raw))) : null;
 }
-export function createWallet(): Keypair {
-  const k = Keypair.generate();
-  localStorage.setItem(WKEY, JSON.stringify(Array.from(k.secretKey)));
-  return k;
-}
-export function importWallet(json: string): Keypair {
-  const k = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(json)));
-  localStorage.setItem(WKEY, JSON.stringify(Array.from(k.secretKey)));
-  return k;
-}
+export const createWallet = (): Keypair => Keypair.generate();
+export const importWallet = (json: string): Keypair => Keypair.fromSecretKey(Uint8Array.from(JSON.parse(json.trim())));
 export const exportWallet = (k: Keypair) => JSON.stringify(Array.from(k.secretKey));
 
 // small local stores: contact names and agreement terms seen on this device
@@ -47,6 +40,23 @@ const pda = (...seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, PROG
 const le = (n: number | BN) => new BN(n).toArrayLike(Buffer, "le", 8);
 export const profilePda = (k: PublicKey) => pda(Buffer.from("profile"), k.toBuffer());
 export const agreementPda = (lender: PublicKey, borrower: PublicKey, id: number) => pda(Buffer.from("agreement"), lender.toBuffer(), borrower.toBuffer(), le(id));
+export const namePda = (name: string) => pda(Buffer.from("name"), Buffer.from(name));
+export const handlePda = (k: PublicKey) => pda(Buffer.from("handle"), k.toBuffer());
+export const NAME_RE = /^[a-z][a-z0-9_]{2,19}$/;
+const handleCache = new Map<string, string | null>();
+/** On-chain @name for a wallet (cached), or null. */
+export async function handleOf(k: PublicKey): Promise<string | null> {
+  const key = k.toBase58();
+  if (!handleCache.has(key)) handleCache.set(key, ((await (program.account as any).nameRecord.fetchNullable(handlePda(k)).catch(() => null)) as any)?.name ?? null);
+  return handleCache.get(key)!;
+}
+/** Wallet that owns @name, or null. */
+export async function ownerOfName(name: string): Promise<PublicKey | null> {
+  const n = name.replace(/^@/, "").toLowerCase();
+  if (!NAME_RE.test(n)) return null;
+  const r = (await (program.account as any).nameRecord.fetchNullable(namePda(n)).catch(() => null)) as any;
+  return r?.owner ?? null;
+}
 export const chamaPda = (creator: PublicKey, id: number) => pda(Buffer.from("chama"), creator.toBuffer(), le(id));
 export const ata = (owner: PublicKey) => getAssociatedTokenAddressSync(MINT, owner, true);
 const ensureAta = (owner: PublicKey) => createAssociatedTokenAccountIdempotentInstruction(SPONSOR, ata(owner), owner, MINT);
@@ -110,6 +120,8 @@ export async function balance(owner: PublicKey): Promise<number> {
 
 // ---------------------------------------------------------------- actions
 export const actions = {
+  registerName: (me: Keypair, name: string) =>
+    ix("registerName", [name], { payer: SPONSOR, user: me.publicKey, nameRecord: namePda(name), handle: handlePda(me.publicKey) }).then((i) => send([i], me)),
   initProfile: (me: Keypair) => ix("initProfile", [], { payer: SPONSOR, user: me.publicKey }).then((i) => send([i], me)),
 
   async createAgreement(me: Keypair, borrower: PublicKey, amount: number, dueTs: number, terms: string, guarantor: PublicKey | null) {

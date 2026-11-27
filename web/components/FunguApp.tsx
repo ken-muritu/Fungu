@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Logo, Ring } from "./Brand";
 import { Turnstile } from "./Turnstile";
+import { BackupFlow, LockScreen, NewPin, RestoreFlow, SecurityCard } from "./Security";
+import { vault } from "@/lib/vault";
 import {
-  actions, balance, createWallet, exportWallet, fetchAgreement, fetchAgreements, fetchChama, fetchChamas, fetchProfile,
-  fmt, importWallet, loadWallet, nameOf, names, sha256, short, termsStore,
+  actions, balance, createWallet, fetchAgreement, fetchAgreements, fetchChama, fetchChamas, fetchProfile,
+  fmt, handleOf, loadWallet, nameOf, NAME_RE, names, ownerOfName, sha256, short, termsStore,
 } from "@/lib/fungu";
 import { explorer, UNIT } from "@/lib/config";
 
@@ -19,17 +21,23 @@ const b64u = {
 };
 const origin = () => window.location.origin;
 const wa = (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}`;
-const toKey = (s: string): PublicKey | null => {
-  try {
-    const m = s.match(/[?&]to=([1-9A-HJ-NP-Za-km-z]{32,44})/);
-    return new PublicKey((m ? m[1] : s).trim());
-  } catch { return null; }
+/** A friend as @name, a Fungu link (?to=address or ?to=@name) or a raw address. */
+const toKey = async (s: string): Promise<PublicKey | null> => {
+  const t = s.trim();
+  const q = t.match(/[?&]to=(@?[A-Za-z0-9_]{3,44})/);
+  const v = decodeURIComponent(q ? q[1] : t);
+  const n = v.replace(/^@/, "").toLowerCase();
+  if (v.startsWith("@") || (v.length <= 20 && NAME_RE.test(n))) return ownerOfName(n);
+  try { return new PublicKey(v); } catch { return null; }
 };
+const LOCK_AFTER = 5 * 60_000;
 const dateOf = (ts: any) => new Date(Number(ts) * 1000).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
 
 export default function FunguApp() {
   const [me, setMe] = useState<Keypair | null>(null);
   const [ready, setReady] = useState(false);
+  const [gate, setGate] = useState<"lock" | "migrate" | "new" | "restore" | null>(null);
+  const [, setHandlesTick] = useState(0);
   const [tab, setTab] = useState<Tab>("home");
   const [msg, setMsg] = useState<Msg>(null);
   const [busy, setBusy] = useState(false);
@@ -41,7 +49,7 @@ export default function FunguApp() {
   const [prefill, setPrefill] = useState<{ to?: string; name?: string }>({});
 
   useEffect(() => {
-    setMe(loadWallet());
+    setGate(vault.exists() ? "lock" : loadWallet() ? "migrate" : "new");
     const q = new URLSearchParams(window.location.search);
     const to = q.get("to"), n = q.get("n"), a = q.get("a"), t = q.get("t"), c = q.get("c");
     if (to) { setPrefill({ to, name: n || "" }); if (n) names.set(to, n); setTab("debts"); }
@@ -58,6 +66,27 @@ export default function FunguApp() {
   }, [me]);
   useEffect(() => { refresh(); }, [refresh]);
 
+  // the key is only ever in memory while unlocked; 5 minutes away from the app locks it again
+  useEffect(() => {
+    if (!me) return;
+    let hiddenAt = 0;
+    const onVis = () => {
+      if (document.hidden) hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt > LOCK_AFTER) { setMe(null); setGate("lock"); }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [me]);
+
+  // show friends by their on-chain @name where they have one
+  useEffect(() => {
+    const keys = new Set<string>();
+    debts.forEach((d) => { keys.add(d.lender.toBase58()); keys.add(d.borrower.toBase58()); if (d.guarantor) keys.add(d.guarantor.toBase58()); });
+    let live = true;
+    Promise.all([...keys].map(async (k) => { const h = await handleOf(new PublicKey(k)); if (h && live) names.set(k, "@" + h); })).then(() => { if (live) setHandlesTick((n) => n + 1); });
+    return () => { live = false; };
+  }, [debts]);
+
   const run = useCallback(async (label: string, fn: () => Promise<string | { sig: string }>) => {
     setBusy(true); setMsg({ kind: "info", text: `${label}…` });
     try {
@@ -73,7 +102,18 @@ export default function FunguApp() {
   }, [refresh]);
 
   if (!ready) return null;
-  if (!me) return <Onboarding onReady={(k) => { setMe(k); }} />;
+  if (!me) {
+    const shell = (body: React.ReactNode) => <><header className="top"><div className="wrap"><Logo /><nav className="nav"><a className="small" href="/">About Fungu</a></nav></div></header><main className="app">{body}</main></>;
+    if (gate === "lock") return <LockScreen onUnlock={setMe} onForgot={() => setGate("restore")} />;
+    if (gate === "restore") return shell(<RestoreFlow onRestored={setMe} onCancel={() => setGate(vault.exists() ? "lock" : "new")} />);
+    if (gate === "migrate") return shell(
+      <div className="card stack">
+        <h2>Protect your wallet with a PIN</h2>
+        <p className="small">Fungu now locks your wallet on this phone. Choose a PIN; you&apos;ll use it (or your fingerprint) to open Fungu.</p>
+        <NewPin onPin={async (p) => { const k = loadWallet()!; await vault.create(k, p); setMe(k); }} />
+      </div>);
+    return <Onboarding onReady={(k, landing) => { setMe(k); if (landing) setTab(landing); }} onRestore={() => setGate("restore")} />;
+  }
 
   const owedToMe = debts.filter((d) => d.lender.equals(me.publicKey) && d.status === "active").reduce((s, d) => s + (d.principal.toNumber() - d.repaid.toNumber()), 0) / UNIT;
   const iOwe = debts.filter((d) => d.borrower.equals(me.publicKey) && d.status === "active").reduce((s, d) => s + (d.principal.toNumber() - d.repaid.toNumber()), 0) / UNIT;
@@ -130,7 +170,7 @@ export default function FunguApp() {
           ? <ChamaView address={focus.address} me={me} busy={busy} run={run} onBack={() => setFocus(null)} />
           : <Chamas me={me} chamas={chamas} busy={busy} run={run} onOpen={(a) => setFocus({ kind: "chama", address: a })} />)}
 
-        {tab === "me" && <Me me={me} profile={profile} />}
+        {tab === "me" && <Me me={me} profile={profile} onLock={() => { setMe(null); setGate("lock"); }} />}
       </main>
     </>
   );
@@ -138,52 +178,81 @@ export default function FunguApp() {
 
 // ------------------------------------------------------------------ onboarding
 
-function Onboarding({ onReady }: { onReady: (k: Keypair) => void }) {
-  const [name, setName] = useState("");
+function Onboarding({ onReady, onRestore }: { onReady: (k: Keypair, landing?: Tab) => void; onRestore: () => void }) {
+  const [step, setStep] = useState<"why" | "name" | "pin" | "making" | "backup">("why");
+  const [landing, setLanding] = useState<Tab>("debts");
+  const [handle, setHandle] = useState("");
+  const [avail, setAvail] = useState<"" | "checking" | "free" | "taken">("");
   const [token, setToken] = useState<string | null>(null);
-  const [state, setState] = useState<string>("");
+  const [state, setState] = useState("");
   const [err, setErr] = useState("");
-  const [restore, setRestore] = useState("");
+  const [kp, setKp] = useState<Keypair | null>(null);
   const onToken = useCallback((t: string | null) => setToken(t), []);
+  const h = handle.toLowerCase().replace(/^@/, "");
 
-  const start = async () => {
-    setErr("");
+  useEffect(() => {
+    if (!NAME_RE.test(h)) { setAvail(""); return; }
+    setAvail("checking");
+    const t = setTimeout(() => ownerOfName(h).then((o) => setAvail(o ? "taken" : "free"), () => setAvail("")), 400);
+    return () => clearTimeout(t);
+  }, [h]);
+
+  const make = async (pin: string) => {
+    setStep("making"); setErr("");
     const k = createWallet();
-    names.set(k.publicKey.toBase58(), name.trim());
     try {
-      setState("Creating your wallet on this phone…");
+      setState("Locking your wallet with your PIN…");
+      await vault.create(k, pin);
+      names.set(k.publicKey.toBase58(), "@" + h);
       setState("Adding 100 test dollars…");
       const f = await fetch("/api/faucet", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ owner: k.publicKey.toBase58(), token }) }).then((r) => r.json());
       if (!f.ok) throw new Error(f.error);
       setState("Setting up your record…");
       await actions.initProfile(k);
-      onReady(k);
-    } catch (e) {
-      setErr((e as Error).message);
-      setState("");
-      onReady(k); // the wallet exists; the record can be set up later from "Me"
-    }
+      setState(`Claiming @${h}…`);
+      await actions.registerName(k, h).catch(() => { throw new Error(`Someone just took @${h}. You can pick another name in Me.`); });
+    } catch (e) { setErr((e as Error).message); }
+    setKp(k); setStep("backup");
   };
 
+  const order = ["why", "name", "pin", "backup"];
+  const at = order.indexOf(step === "making" ? "pin" : step);
   return (
     <>
       <header className="top"><div className="wrap"><Logo /><nav className="nav"><a className="small" href="/">About Fungu</a></nav></div></header>
       <main className="app stack">
-        <div className="card stack">
-          <h2 style={{ fontSize: 28 }}>Welcome to Fungu</h2>
-          <p className="small">Your wallet is created on this device and only you hold its key. Fungu pays the network fees. This is a test version on Solana devnet with free test dollars (fUSD).</p>
-          <div className="field"><label htmlFor="nm">Your first name (saved on this device only)</label><input id="nm" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Wanjiru" maxLength={24} /></div>
-          <Turnstile onToken={onToken} />
-          <button className="btn" disabled={!name.trim() || !token || !!state} onClick={start}>{state || "Create my wallet"}</button>
-          {err && <div className="notice err">{err}</div>}
-        </div>
-        <details className="card">
-          <summary style={{ cursor: "pointer", fontWeight: 600 }}>Restore a wallet from a backup</summary>
-          <div className="stack" style={{ marginTop: 12 }}>
-            <textarea rows={3} value={restore} onChange={(e) => setRestore(e.target.value)} placeholder="Paste your backup key" />
-            <button className="btn ghost small" onClick={() => { try { onReady(importWallet(restore)); } catch { setErr("That backup key isn't valid."); } }}>Restore</button>
+        <ol className="steps" aria-label={`Step ${at + 1} of 4`}>{["Start", "Name", "PIN", "Backup"].map((x, i) => <li key={x} className={i <= at ? "on" : ""}>{x}</li>)}</ol>
+        {step === "why" && (
+          <div className="card stack">
+            <h2>What brings you to Fungu?</h2>
+            <button className="choice" onClick={() => { setLanding("debts"); setStep("name"); }}><b>Lending to or borrowing from a friend</b><span>Write down what you agreed. Repay bit by bit.</span></button>
+            <button className="choice" onClick={() => { setLanding("chamas"); setStep("name"); }}><b>Running a chama</b><span>Rounds, payouts and bonds nobody can fiddle with.</span></button>
+            <button className="linkbtn" onClick={onRestore}>I already have Fungu on another phone</button>
           </div>
-        </details>
+        )}
+        {step === "name" && (
+          <div className="card stack">
+            <h2>Pick your Fungu name</h2>
+            <p className="small">Friends send you agreements by this name instead of a long address. It&apos;s public and permanent.</p>
+            <div className="field"><label htmlFor="hn">Fungu name</label>
+              <div className="at"><span>@</span><input id="hn" value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20))} placeholder="wanjiru" autoCapitalize="none" autoComplete="username" /></div></div>
+            <p className={`small ${avail === "taken" ? "bad" : avail === "free" ? "good" : ""}`} aria-live="polite">
+              {!h ? "3–20 letters, numbers or _, starting with a letter." : !NAME_RE.test(h) ? "Use 3–20 lower-case letters, numbers or _, starting with a letter." : avail === "checking" ? "Checking…" : avail === "taken" ? `@${h} is taken.` : avail === "free" ? `@${h} is free.` : ""}
+            </p>
+            <Turnstile onToken={onToken} />
+            <button className="btn" disabled={avail !== "free" || !token} onClick={() => setStep("pin")}>Continue</button>
+          </div>
+        )}
+        {step === "pin" && <div className="card stack"><h2>Lock it with a PIN</h2><p className="small">Your wallet lives on this phone, encrypted with this PIN. Fungu never sees it.</p><NewPin onPin={make} /></div>}
+        {step === "making" && <div className="card stack"><h2>Setting up</h2><p className="small" aria-live="polite">{state}</p></div>}
+        {step === "backup" && kp && (
+          <div className="card stack">
+            <h2>Back it up before you hold money</h2>
+            {err && <div className="notice err">{err}</div>}
+            <BackupFlow me={kp} onDone={() => onReady(kp, landing)} />
+            <button className="linkbtn" onClick={() => onReady(kp, landing)}>Skip for now (Me → Security later)</button>
+          </div>
+        )}
       </main>
     </>
   );
@@ -225,10 +294,10 @@ function Debts({ me, debts, busy, run, prefill, onOpen }: { me: Keypair; debts: 
   const [open, setOpen] = useState(!!prefill.to);
 
   const submit = async () => {
-    const borrower = toKey(to);
-    if (!borrower) return alert("That Fungu link or address isn't valid.");
+    const borrower = await toKey(to);
+    if (!borrower) return alert(to.trim().startsWith("@") ? `Nobody has the name ${to.trim()} yet.` : "That Fungu name, link or address isn't valid.");
     if (borrower.equals(me.publicKey)) return alert("You can't lend to yourself.");
-    const g = guarantor.trim() ? toKey(guarantor) : null;
+    const g = guarantor.trim() ? await toKey(guarantor) : null;
     if (guarantor.trim() && !g) return alert("The guarantor's link or address isn't valid.");
     if (who.trim()) names.set(borrower.toBase58(), who.trim());
     const amt = Number(amount);
@@ -271,7 +340,7 @@ function Debts({ me, debts, busy, run, prefill, onOpen }: { me: Keypair; debts: 
         </div>
         {open && (
           <div style={{ marginTop: 16 }}>
-            <div className="field"><label>Friend&apos;s Fungu link or address</label><input value={to} onChange={(e) => setTo(e.target.value)} placeholder="Paste the link they sent you" /></div>
+            <div className="field"><label>Friend&apos;s @name or Fungu link</label><input value={to} onChange={(e) => setTo(e.target.value)} placeholder="@otieno, or paste their link" autoCapitalize="none" /></div>
             <div className="two">
               <div className="field"><label>Their name</label><input value={who} onChange={(e) => setWho(e.target.value)} placeholder="e.g. Otieno" maxLength={24} /></div>
               <div className="field"><label>Amount (fUSD)</label><input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
@@ -538,12 +607,34 @@ function ChamaView({ address, me, busy, run, onBack }: { address: string; me: Ke
 
 // ------------------------------------------------------------------ me
 
-function Me({ me, profile }: { me: Keypair; profile: any }) {
-  const [show, setShow] = useState(false);
+function Me({ me, profile, onLock }: { me: Keypair; profile: any; onLock: () => void }) {
   const [err, setErr] = useState("");
-  const [name, setName] = useState(names.get()[me.publicKey.toBase58()] || "");
+  const [handle, setHandle] = useState<string | null | undefined>(undefined);
+  const [want, setWant] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { handleOf(me.publicKey).then(setHandle); }, [me]);
+  const claim = async () => {
+    setErr("");
+    const n = want.toLowerCase().replace(/^@/, "");
+    if (!NAME_RE.test(n)) return setErr("Use 3–20 lower-case letters, numbers or _, starting with a letter.");
+    setBusy(true);
+    try {
+      if (await ownerOfName(n)) throw new Error(`@${n} is taken.`);
+      await actions.registerName(me, n); names.set(me.publicKey.toBase58(), "@" + n); setHandle(n);
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
   return (
     <div className="stack">
+      <div className="card stack">
+        <h3>{handle ? `@${handle}` : "Your Fungu name"}</h3>
+        {handle === null && (<>
+          <p className="small">Claim a name so friends can find you without your address.</p>
+          <div className="at"><span>@</span><input aria-label="Fungu name" value={want} onChange={(e) => setWant(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20))} placeholder="wanjiru" autoCapitalize="none" /></div>
+          <button className="btn small" onClick={claim} disabled={!want || busy}>{busy ? "Claiming…" : "Claim it"}</button>
+        </>)}
+        {handle && <p className="small">Friends can lend to you by typing <b>@{handle}</b>.</p>}
+        {err && <div className="notice err">{err}</div>}
+      </div>
       <div className="card stack">
         <h3>Your record</h3>
         {profile ? (
@@ -555,21 +646,14 @@ function Me({ me, profile }: { me: Keypair; profile: any }) {
           <><p className="small">Your record isn&apos;t set up yet.</p><button className="btn small" onClick={() => actions.initProfile(me).then(() => location.reload(), (e) => setErr(e.message))}>Set it up</button></>
         )}
         <p className="small">This is public and simple on purpose. It isn&apos;t a credit score.</p>
-        {err && <div className="notice err">{err}</div>}
       </div>
+      <SecurityCard me={me} onLock={onLock} />
       <div className="card stack">
-        <h3>Your wallet</h3>
-        <div className="field"><label>Your name on this device</label><input value={name} onChange={(e) => { setName(e.target.value); names.set(me.publicKey.toBase58(), e.target.value); }} maxLength={24} /></div>
-        <div className="small">Address</div><div className="mono">{me.publicKey.toBase58()}</div>
+        <h3>Your wallet address</h3>
+        <div className="mono">{me.publicKey.toBase58()}</div>
         <a className="small" href={explorer("address", me.publicKey.toBase58())} target="_blank" rel="noreferrer">View on Solana ↗</a>
-        <div className="notice">Your key lives only on this device. Back it up somewhere safe: if you clear this browser without a backup, the wallet is gone.</div>
-        <div className="row">
-          <button className="btn ghost small" onClick={() => setShow(!show)}>{show ? "Hide backup key" : "Show backup key"}</button>
-          <button className="btn ghost small" onClick={() => navigator.clipboard.writeText(exportWallet(me))}>Copy backup key</button>
-        </div>
-        {show && <div className="terms mono" style={{ fontSize: 11 }}>{exportWallet(me)}</div>}
+        <p className="small">Short: {short(me.publicKey)}</p>
       </div>
-      <p className="small">Short address: {short(me.publicKey)}</p>
     </div>
   );
 }
