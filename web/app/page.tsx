@@ -30,7 +30,7 @@ export default function Home() {
             <p className="small" style={{ marginTop: 18 }}>Free to try on Solana devnet with test dollars. Locked with your PIN or fingerprint.</p>
           </div>
           <figure className="hero-art" aria-label="Ken, a Fungu user, with two updates from the app">
-            <img src="/ken-hero.webp" alt="Ken smiling, sitting forward" width={625} height={900} fetchPriority="high" />
+            <img src="/ken-hero.webp" alt="Ken smiling, sitting forward" width={625} height={798} fetchPriority="high" />
             <div className="float f1"><Ring value={2 / 3} size={34} stroke={5} /><div><b>@otieno paid 1,000</b><span>2 of 3 portions · due 11 Dec</span></div></div>
             <div className="float f2"><Ring value={1} size={34} stroke={5} /><div><b>Wamama wa Kahawa</b><span>Round 3 of 6 · everyone paid</span></div></div>
           </figure>
