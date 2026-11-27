@@ -19,14 +19,21 @@ export default function Home() {
 
       <main>
         <section className="hero wrap">
-          <span className="kicker">Debts and chamas, kept honest</span>
-          <h1>Lend to friends without losing them.</h1>
-          <p className="lead">Fungu writes down what was agreed, who owes what and when, then lets the money settle wallet to wallet. No awkward reminders, no lost notebooks, no treasurer to trust blindly.</p>
-          <div className="cta">
-            <a className="btn" href="/app">Open the app</a>
-            <a className="btn ghost" href="#how">See how it works</a>
+          <div className="hero-copy">
+            <span className="kicker">Debts and chamas, kept honest</span>
+            <h1>Lend to friends without losing them<span className="dot">.</span></h1>
+            <p className="lead">Fungu writes down what was agreed, who owes what and when, then lets the money settle phone to phone. No awkward reminders, no lost notebooks, no treasurer to trust blindly.</p>
+            <div className="cta">
+              <a className="btn" href="/app">Open Fungu</a>
+              <a className="btn ghost" href="#how">See how it works</a>
+            </div>
+            <p className="small" style={{ marginTop: 18 }}>Free to try on Solana devnet with test dollars. Locked with your PIN or fingerprint.</p>
           </div>
-          <p className="small" style={{ marginTop: 18 }}>Free to try on Solana devnet with test dollars. No card, no SOL needed.</p>
+          <figure className="hero-art" aria-label="Ken, a Fungu user, with two updates from the app">
+            <img src="/ken-hero.webp" alt="Ken smiling, sitting forward" width={625} height={900} fetchPriority="high" />
+            <div className="float f1"><Ring value={2 / 3} size={34} stroke={5} /><div><b>@otieno paid 1,000</b><span>2 of 3 portions · due 11 Dec</span></div></div>
+            <div className="float f2"><Ring value={1} size={34} stroke={5} /><div><b>Wamama wa Kahawa</b><span>Round 3 of 6 · everyone paid</span></div></div>
+          </figure>
         </section>
 
         <section className="section wrap" id="how">

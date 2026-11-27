@@ -31,6 +31,9 @@ const toKey = async (s: string): Promise<PublicKey | null> => {
   try { return new PublicKey(v); } catch { return null; }
 };
 const LOCK_AFTER = 5 * 60_000;
+let kesRate: number | null = null;
+/** "≈ KSh 1,300" for an fUSD amount; empty until the rate loads. fUSD is a test dollar pegged 1:1 to USD. */
+const ksh = (usd: number) => (kesRate ? `≈ KSh ${Math.round(usd * kesRate).toLocaleString("en-KE")}` : "");
 const dateOf = (ts: any) => new Date(Number(ts) * 1000).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
 
 export default function FunguApp() {
@@ -49,6 +52,7 @@ export default function FunguApp() {
   const [prefill, setPrefill] = useState<{ to?: string; name?: string }>({});
 
   useEffect(() => {
+    fetch("/api/rate").then((r) => r.json()).then((j) => { if (j.kes) { kesRate = j.kes; setHandlesTick((n) => n + 1); } }).catch(() => {});
     setGate(vault.exists() ? "lock" : loadWallet() ? "migrate" : "new");
     const q = new URLSearchParams(window.location.search);
     const to = q.get("to"), n = q.get("n"), a = q.get("a"), t = q.get("t"), c = q.get("c");
@@ -138,12 +142,12 @@ export default function FunguApp() {
         {tab === "home" && (
           <div className="stack">
             <div className="card balance">
-              <div><div className="small">Your balance</div><div className="amt">{fmt(bal)} <span className="small">fUSD</span></div></div>
+              <div><div className="small">Your balance</div><div className="amt">{fmt(bal)} <span className="small">fUSD</span></div><div className="small">{ksh(bal)}</div></div>
               <button className="btn ghost small" onClick={refresh} disabled={busy}>Refresh</button>
             </div>
             <div className="two">
-              <div className="card"><div className="small">Owed to you</div><div className="amt" style={{ fontSize: 24, fontFamily: "var(--display)" }}>{fmt(owedToMe)}</div></div>
-              <div className="card"><div className="small">You owe</div><div className="amt" style={{ fontSize: 24, fontFamily: "var(--display)" }}>{fmt(iOwe)}</div></div>
+              <div className="card"><div className="small">Owed to you</div><div className="amt" style={{ fontSize: 24, fontFamily: "var(--display)" }}>{fmt(owedToMe)}</div><div className="small">{ksh(owedToMe)}</div></div>
+              <div className="card"><div className="small">You owe</div><div className="amt" style={{ fontSize: 24, fontFamily: "var(--display)" }}>{fmt(iOwe)}</div><div className="small">{ksh(iOwe)}</div></div>
             </div>
             <div className="card">
               <h3>Your Fungu link</h3>
