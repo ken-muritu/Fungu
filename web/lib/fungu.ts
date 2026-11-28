@@ -202,6 +202,31 @@ export async function fetchProposals(book: PublicKey) {
   return all.map((x: any) => ({ address: x.publicKey as PublicKey, ...x.account })).sort((p: any, q: any) => p.seq.toNumber() - q.seq.toNumber());
 }
 
+/** Committed entries in order, read from the program's own BookEvent logs (the authoritative history). */
+export async function fetchBookHistory(book: PublicKey) {
+  const sigs = [] as { signature: string; blockTime?: number | null }[];
+  let before: string | undefined;
+  for (let i = 0; i < 10; i++) {
+    const page = await conn.getSignaturesForAddress(book, { before, limit: 1000 });
+    sigs.push(...page.filter((s) => !s.err));
+    if (page.length < 1000) break;
+    before = page[page.length - 1].signature;
+  }
+  const out: { kind: number; seq: number; amount: number; hash: number[]; root: number[]; sig: string; time: number }[] = [];
+  for (const s of sigs.reverse()) {
+    const tx = await conn.getTransaction(s.signature, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
+    for (const line of tx?.meta?.logMessages ?? []) {
+      if (!line.startsWith("Program data: ")) continue;
+      const ev = (program.coder as any).events.decode(line.slice(14));
+      if (ev?.name !== "bookEvent" && ev?.name !== "BookEvent") continue;
+      const d = ev.data;
+      if (!d.book.equals(book) || d.kind < 1 || d.kind > 9) continue;
+      out.push({ kind: d.kind, seq: Number(d.seq), amount: Number(d.amount), hash: Array.from(d.entryHash as number[]), root: Array.from(d.root as number[]), sig: s.signature, time: s.blockTime ?? 0 });
+    }
+  }
+  return out.sort((a, b) => a.seq - b.seq);
+}
+
 export const bookActions = {
   async create(me: Keypair, officials: PublicKey[], threshold: number, rules: string, currency = "KES") {
     const id = Date.now();
