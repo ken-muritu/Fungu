@@ -458,11 +458,12 @@ pub mod fungu {
         p.entry_hash = entry_hash;
         p.amount = amount;
         p.approvals = 0;
+        p.rent_payer = ctx.accounts.payer.key();
         p.created_at = Clock::get()?.unix_timestamp;
         p.bump = ctx.bumps.proposal;
         b.next_proposal += 1;
         if let Some(i) = b.officials.iter().position(|o| *o == proposer) {
-            p.approvals |= 1 << i;
+            p.approvals |= 1u8 << i;
         }
         emit!(BookEvent { book: b.key(), kind: 100 + kind, seq: p.seq, entry_hash, amount, root: b.root });
         if p.approvals.count_ones() >= b.threshold as u32 {
@@ -479,8 +480,8 @@ pub mod fungu {
         let b = &mut ctx.accounts.book;
         let p = &mut ctx.accounts.proposal;
         let i = b.officials.iter().position(|o| *o == official).ok_or_else(|| error!(FunguError::NotOfficial))?;
-        require!(p.approvals & (1 << i) == 0, FunguError::AlreadyApproved);
-        p.approvals |= 1 << i;
+        require!((p.approvals & (1u8 << i)) == 0, FunguError::AlreadyApproved);
+        p.approvals |= 1u8 << i;
         if p.approvals.count_ones() >= b.threshold as u32 {
             commit(b, p)?;
             p.close(ctx.accounts.payer.to_account_info())?;
@@ -504,7 +505,13 @@ pub mod fungu {
 /// Chain an approved entry into the book:
 /// root = sha256(root | kind | amount_le | entry_hash).
 fn commit(b: &mut Account<Book>, p: &Account<Proposal>) -> Result<()> {
-    b.root = anchor_lang::solana_program::hash::hashv(&[&b.root, &[p.kind], &p.amount.to_le_bytes(), &p.entry_hash]).to_bytes();
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(b.root);
+    h.update([p.kind]);
+    h.update(p.amount.to_le_bytes());
+    h.update(p.entry_hash);
+    b.root = h.finalize().into();
     b.entries += 1;
     if p.kind == ENTRY_RULES {
         b.rules_hash = p.entry_hash;
@@ -900,6 +907,7 @@ pub struct Proposal {
     pub entry_hash: [u8; 32],
     pub amount: u64,
     pub approvals: u8,
+    pub rent_payer: Pubkey,
     pub created_at: i64,
     pub bump: u8,
 }
@@ -907,36 +915,36 @@ pub struct Proposal {
 #[derive(Accounts)]
 #[instruction(id: u64)]
 pub struct CreateBook<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
     #[account(init, payer = payer, space = 8 + Book::INIT_SPACE, seeds = [b"book", creator.key().as_ref(), &id.to_le_bytes()], bump)]
     pub book: Account<'info, Book>,
     pub creator: Signer<'info>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct Propose<'info> {
     #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(mut)]
     pub book: Account<'info, Book>,
     #[account(init, payer = payer, space = 8 + Proposal::INIT_SPACE, seeds = [b"proposal", book.key().as_ref(), &book.next_proposal.to_le_bytes()], bump)]
     pub proposal: Account<'info, Proposal>,
     pub proposer: Signer<'info>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct Approve<'info> {
+    /// CHECK: gets back the rent it paid when the proposal closes.
+    #[account(mut, address = proposal.rent_payer)]
+    pub payer: UncheckedAccount<'info>,
     #[account(mut)]
     pub book: Account<'info, Book>,
     #[account(mut, has_one = book)]
     pub proposal: Account<'info, Proposal>,
     pub official: Signer<'info>,
-    /// CHECK: only receives the closed proposal's rent.
-    #[account(mut)]
-    pub payer: UncheckedAccount<'info>,
 }
 
 #[event]
