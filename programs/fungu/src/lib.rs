@@ -402,9 +402,116 @@ pub mod fungu {
         emit!(ChamaEvent { chama: c.key(), kind: 5, member, amount });
         Ok(())
     }
+
+    // ------------------------------------------------------------------ books
+    // A Book is the money record of a chama, or of a debt between friends, kept
+    // in KES (or any currency code). No tokens move. Each entry is a salted
+    // hash of the off-chain record, chained into `root`, so nobody (not the
+    // treasurer, not Fungu) can rewrite history unnoticed. Entries and rule
+    // changes land only once `threshold` officials approve.
+
+    /// Open a book. `officials` are the people whose approvals count (chair,
+    /// treasurer, secretary; or lender and borrower for a debt).
+    pub fn create_book(
+        ctx: Context<CreateBook>,
+        id: u64,
+        officials: Vec<Pubkey>,
+        threshold: u8,
+        rules_hash: [u8; 32],
+        currency: [u8; 3],
+    ) -> Result<()> {
+        require!(!officials.is_empty() && officials.len() <= MAX_OFFICIALS, FunguError::BadOfficials);
+        require!(threshold >= 1 && (threshold as usize) <= officials.len(), FunguError::BadThreshold);
+        for (i, o) in officials.iter().enumerate() {
+            require!(!officials[..i].contains(o), FunguError::BadOfficials);
+        }
+        let creator = ctx.accounts.creator.key();
+        require!(officials.contains(&creator), FunguError::NotOfficial);
+        let b = &mut ctx.accounts.book;
+        b.id = id;
+        b.creator = creator;
+        b.officials = officials;
+        b.threshold = threshold;
+        b.rules_hash = rules_hash;
+        b.currency = currency;
+        b.root = rules_hash;
+        b.entries = 0;
+        b.next_proposal = 0;
+        b.created_at = Clock::get()?.unix_timestamp;
+        b.bump = ctx.bumps.book;
+        emit!(BookEvent { book: b.key(), kind: 0, seq: 0, entry_hash: rules_hash, amount: 0, root: b.root });
+        Ok(())
+    }
+
+    /// Anyone proposes an entry (a contribution with its M-Pesa code hash, a
+    /// payout, a repayment, a fine) or a rule change. An official proposer's
+    /// approval counts at once.
+    pub fn propose(ctx: Context<Propose>, kind: u8, entry_hash: [u8; 32], amount: u64) -> Result<()> {
+        require!(kind >= 1 && kind <= ENTRY_KIND_MAX, FunguError::BadKind);
+        let proposer = ctx.accounts.proposer.key();
+        let b = &mut ctx.accounts.book;
+        let p = &mut ctx.accounts.proposal;
+        p.book = b.key();
+        p.seq = b.next_proposal;
+        p.proposer = proposer;
+        p.kind = kind;
+        p.entry_hash = entry_hash;
+        p.amount = amount;
+        p.approvals = 0;
+        p.created_at = Clock::get()?.unix_timestamp;
+        p.bump = ctx.bumps.proposal;
+        b.next_proposal += 1;
+        if let Some(i) = b.officials.iter().position(|o| *o == proposer) {
+            p.approvals |= 1 << i;
+        }
+        emit!(BookEvent { book: b.key(), kind: 100 + kind, seq: p.seq, entry_hash, amount, root: b.root });
+        if p.approvals.count_ones() >= b.threshold as u32 {
+            commit(b, p)?;
+            p.close(ctx.accounts.payer.to_account_info())?;
+        }
+        Ok(())
+    }
+
+    /// An official approves. At the threshold the entry is chained into the
+    /// book and the proposal account closes (rent goes back to `payer`).
+    pub fn approve(ctx: Context<Approve>) -> Result<()> {
+        let official = ctx.accounts.official.key();
+        let b = &mut ctx.accounts.book;
+        let p = &mut ctx.accounts.proposal;
+        let i = b.officials.iter().position(|o| *o == official).ok_or_else(|| error!(FunguError::NotOfficial))?;
+        require!(p.approvals & (1 << i) == 0, FunguError::AlreadyApproved);
+        p.approvals |= 1 << i;
+        if p.approvals.count_ones() >= b.threshold as u32 {
+            commit(b, p)?;
+            p.close(ctx.accounts.payer.to_account_info())?;
+        }
+        Ok(())
+    }
+
+    /// The proposer or any official withdraws a proposal that hasn't landed.
+    pub fn reject(ctx: Context<Approve>) -> Result<()> {
+        let who = ctx.accounts.official.key();
+        let b = &ctx.accounts.book;
+        let p = &ctx.accounts.proposal;
+        require!(who == p.proposer || b.officials.contains(&who), FunguError::NotOfficial);
+        emit!(BookEvent { book: b.key(), kind: 200, seq: p.seq, entry_hash: p.entry_hash, amount: p.amount, root: b.root });
+        ctx.accounts.proposal.close(ctx.accounts.payer.to_account_info())
+    }
 }
 
 // ------------------------------------------------------------------ helpers
+
+/// Chain an approved entry into the book:
+/// root = sha256(root | kind | amount_le | entry_hash).
+fn commit(b: &mut Account<Book>, p: &Account<Proposal>) -> Result<()> {
+    b.root = anchor_lang::solana_program::hash::hashv(&[&b.root, &[p.kind], &p.amount.to_le_bytes(), &p.entry_hash]).to_bytes();
+    b.entries += 1;
+    if p.kind == ENTRY_RULES {
+        b.rules_hash = p.entry_hash;
+    }
+    emit!(BookEvent { book: b.key(), kind: p.kind, seq: b.entries, entry_hash: p.entry_hash, amount: p.amount, root: b.root });
+    Ok(())
+}
 
 fn apply_repayment(
     a: &mut Account<Agreement>,
@@ -760,6 +867,88 @@ pub struct ChamaEvent {
     pub amount: u64,
 }
 
+pub const MAX_OFFICIALS: usize = 5;
+/// Entry kinds: 1 contribution, 2 payout, 3 repayment, 4 loan given, 5 fine,
+/// 6 member joined, 7 member left, 8 note, 9 rule change.
+pub const ENTRY_RULES: u8 = 9;
+pub const ENTRY_KIND_MAX: u8 = 9;
+
+#[account]
+#[derive(InitSpace)]
+pub struct Book {
+    pub id: u64,
+    pub creator: Pubkey,
+    #[max_len(5)]
+    pub officials: Vec<Pubkey>,
+    pub threshold: u8,
+    pub rules_hash: [u8; 32],
+    pub currency: [u8; 3],
+    pub root: [u8; 32],
+    pub entries: u64,
+    pub next_proposal: u64,
+    pub created_at: i64,
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Proposal {
+    pub book: Pubkey,
+    pub seq: u64,
+    pub proposer: Pubkey,
+    pub kind: u8,
+    pub entry_hash: [u8; 32],
+    pub amount: u64,
+    pub approvals: u8,
+    pub created_at: i64,
+    pub bump: u8,
+}
+
+#[derive(Accounts)]
+#[instruction(id: u64)]
+pub struct CreateBook<'info> {
+    #[account(init, payer = payer, space = 8 + Book::INIT_SPACE, seeds = [b"book", creator.key().as_ref(), &id.to_le_bytes()], bump)]
+    pub book: Account<'info, Book>,
+    pub creator: Signer<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Propose<'info> {
+    #[account(mut)]
+    pub book: Account<'info, Book>,
+    #[account(init, payer = payer, space = 8 + Proposal::INIT_SPACE, seeds = [b"proposal", book.key().as_ref(), &book.next_proposal.to_le_bytes()], bump)]
+    pub proposal: Account<'info, Proposal>,
+    pub proposer: Signer<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Approve<'info> {
+    #[account(mut)]
+    pub book: Account<'info, Book>,
+    #[account(mut, has_one = book)]
+    pub proposal: Account<'info, Proposal>,
+    pub official: Signer<'info>,
+    /// CHECK: only receives the closed proposal's rent.
+    #[account(mut)]
+    pub payer: UncheckedAccount<'info>,
+}
+
+#[event]
+pub struct BookEvent {
+    pub book: Pubkey,
+    pub kind: u8,
+    pub seq: u64,
+    pub entry_hash: [u8; 32],
+    pub amount: u64,
+    pub root: [u8; 32],
+}
+
 #[error_code]
 pub enum FunguError {
     #[msg("Amount must be more than zero")]
@@ -804,4 +993,14 @@ pub enum FunguError {
     AlreadyWithdrawn,
     #[msg("Names are 3-20 lower-case letters, digits or _, starting with a letter")]
     InvalidName,
+    #[msg("A book needs 1 to 5 distinct officials, including its creator")]
+    BadOfficials,
+    #[msg("Approvals needed must be between 1 and the number of officials")]
+    BadThreshold,
+    #[msg("Only an official of this book can do that")]
+    NotOfficial,
+    #[msg("Already approved")]
+    AlreadyApproved,
+    #[msg("Unknown entry type")]
+    BadKind,
 }
