@@ -121,7 +121,53 @@ check(pc.chamaCycles === 1 && pc.chamaMissed === 1, "Carol's profile: 1 cycle, 1
 const pa = await program.account.profile.fetch(profileOf(alice.publicKey));
 check(pa.chamaCycles === 1 && pa.chamaMissed === 0, "Alice's profile: 1 cycle, 0 missed");
 
-const out = { program: program.programId.toBase58(), mint: mint.toBase58(), agreement: agreement.toBase58(), chama: chama.toBase58(), final, failures, txs: log };
+// ---- books: KES records, salted hash chain, 2-of-3 official approval, no tokens
+const sha = (...parts) => { const h = crypto.createHash("sha256"); for (const p of parts) h.update(Buffer.from(p)); return Array.from(h.digest()); };
+const rules = "Wanjiku Women Group: KES 500 every Friday; payout order Alice, Bob, Carol; fine KES 50 late";
+const bid = Date.now();
+const book = pda(Buffer.from("book"), alice.publicKey.toBuffer(), le(bid));
+const officials = [alice.publicKey, bob.publicKey, carol.publicKey];
+await expectFail("book with threshold 4 of 3", program.methods.createBook(new BN(bid), officials, 4, sha(rules), [...Buffer.from("KES")])
+  .accountsPartial({ payer: sponsor.publicKey, creator: alice.publicKey, book }).signers([alice]).rpc(), "BadThreshold");
+await step("create book (2 of 3 officials)", program.methods.createBook(new BN(bid), officials, 2, sha(rules), [...Buffer.from("KES")])
+  .accountsPartial({ payer: sponsor.publicKey, creator: alice.publicKey, book }).signers([alice]).rpc());
+const prop = (seq) => pda(Buffer.from("proposal"), book.toBuffer(), le(seq));
+const rec = (o) => sha("salt-" + o.n, "|", JSON.stringify(o));
+const e1 = rec({ n: 1, kind: "contribution", amount: 500, who: "carol", mpesa: "TKL3X9ABCD" });
+const outsider = Keypair.generate();
+// a member (not an official) proposes; needs 2 official approvals
+await step("outsider proposes contribution KES 500", program.methods.propose(1, e1, new BN(500))
+  .accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(0), proposer: outsider.publicKey }).signers([outsider]).rpc());
+await expectFail("outsider cannot approve", program.methods.approve().accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(0), official: outsider.publicKey }).signers([outsider]).rpc(), "NotOfficial");
+await step("Alice approves", program.methods.approve().accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(0), official: alice.publicKey }).signers([alice]).rpc());
+await expectFail("Alice approves twice", program.methods.approve().accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(0), official: alice.publicKey }).signers([alice]).rpc(), "AlreadyApproved");
+let b = await program.account.book.fetch(book);
+check(b.entries.toNumber() === 0, "1 of 2 approvals: nothing recorded yet");
+await expectFail("rent can't be redirected", program.methods.approve().accountsPartial({ payer: outsider.publicKey, book, proposal: prop(0), official: bob.publicKey }).signers([bob]).rpc(), "Constraint");
+await step("Bob approves -> entry lands", program.methods.approve().accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(0), official: bob.publicKey }).signers([bob]).rpc());
+b = await program.account.book.fetch(book);
+let root = sha(rules);
+const chain = (r, kind, amt, h) => sha(r, [kind], new BN(amt).toArrayLike(Buffer, "le", 8), h);
+root = chain(root, 1, 500, e1);
+check(b.entries.toNumber() === 1 && Buffer.from(b.root).equals(Buffer.from(root)), "root matches the off-chain record chain");
+check((await conn.getAccountInfo(prop(0))) === null, "proposal account closed, rent returned");
+// an official proposes a payout: their own approval counts, one more needed
+const e2 = rec({ n: 2, kind: "payout", amount: 1500, who: "alice" });
+await step("Carol proposes payout KES 1,500", program.methods.propose(2, e2, new BN(1500)).accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(1), proposer: carol.publicKey }).signers([carol]).rpc());
+await step("Bob rejects it", program.methods.reject().accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(1), official: bob.publicKey }).signers([bob]).rpc());
+b = await program.account.book.fetch(book);
+check(b.entries.toNumber() === 1, "rejected payout never recorded");
+// rule change by 2 officials updates the rules hash
+const rules2 = rules.replace("KES 50", "KES 100");
+await step("Alice proposes rule change", program.methods.propose(9, sha(rules2), new BN(0)).accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(2), proposer: alice.publicKey }).signers([alice]).rpc());
+await step("Carol approves rule change", program.methods.approve().accountsPartial({ payer: sponsor.publicKey, book, proposal: prop(2), official: carol.publicKey }).signers([carol]).rpc());
+b = await program.account.book.fetch(book);
+root = chain(root, 9, 0, sha(rules2));
+check(Buffer.from(b.rulesHash).equals(Buffer.from(sha(rules2))) && Buffer.from(b.root).equals(Buffer.from(root)), "rules updated and chained");
+// tamper check: a different record can never reproduce the root
+check(!Buffer.from(chain(chain(sha(rules), 1, 5000, e1), 9, 0, sha(rules2))).equals(Buffer.from(b.root)), "an edited amount breaks the root (tamper evident)");
+
+const out = { program: program.programId.toBase58(), mint: mint.toBase58(), agreement: agreement.toBase58(), chama: chama.toBase58(), book: book.toBase58(), final, failures, txs: log };
 fs.writeFileSync(new URL("../e2e-result.json", import.meta.url), JSON.stringify(out, null, 2));
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : failures + " CHECK(S) FAILED"}  (${log.length} transactions, saved to sdk/e2e-result.json)`);
 process.exit(failures ? 1 : 0);

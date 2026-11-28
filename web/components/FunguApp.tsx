@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Logo, Ring } from "./Brand";
-import { IChama, IDebts, IHome, IMe, IPlus, IRefresh } from "./Icons";
+import { IBook, IChama, IDebts, IHome, IMe, IPlus, IRefresh } from "./Icons";
 import { Turnstile } from "./Turnstile";
+import { Books, BookView, importSharedRecord } from "./Books";
 import { BackupFlow, LockScreen, NewPin, RestoreFlow, SecurityCard } from "./Security";
 import { vault } from "@/lib/vault";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/lib/fungu";
 import { explorer, UNIT } from "@/lib/config";
 
-type Tab = "home" | "debts" | "chamas" | "me";
+type Tab = "home" | "debts" | "chamas" | "books" | "me";
 type Msg = { kind: "ok" | "err" | "info"; text: string; sig?: string } | null;
 
 const b64u = {
@@ -49,7 +50,7 @@ export default function FunguApp() {
   const [debts, setDebts] = useState<any[]>([]);
   const [chamas, setChamas] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
-  const [focus, setFocus] = useState<{ kind: "agreement" | "chama"; address: string } | null>(null);
+  const [focus, setFocus] = useState<{ kind: "agreement" | "chama" | "book"; address: string } | null>(null);
   const [prefill, setPrefill] = useState<{ to?: string; name?: string }>({});
   const [startNew, setStartNew] = useState(0); // bumps to open the "new" form on Debts/Chamas
   const [myHandle, setMyHandle] = useState<string | null>(null);
@@ -62,7 +63,9 @@ export default function FunguApp() {
     if (to) { setPrefill({ to, name: n || "" }); if (n) names.set(to, n); setTab("debts"); }
     if (a) { if (t) { try { termsStore.set(a, b64u.dec(t)); } catch { /* ignore */ } } setFocus({ kind: "agreement", address: a }); setTab("debts"); }
     if (c) { setFocus({ kind: "chama", address: c }); setTab("chamas"); }
-    const tb = q.get("tab"); if (tb === "debts" || tb === "chamas" || tb === "me") setTab(tb);
+    const bk = q.get("b"), r = q.get("r");
+    if (bk) { if (r) importSharedRecord(bk, r); setFocus({ kind: "book", address: bk }); setTab("books"); }
+    const tb = q.get("tab"); if (tb === "debts" || tb === "chamas" || tb === "books" || tb === "me") setTab(tb);
     setReady(true);
   }, []);
 
@@ -127,7 +130,7 @@ export default function FunguApp() {
   const owedToMe = debts.filter((d) => d.lender.equals(me.publicKey) && d.status === "active").reduce((s, d) => s + (d.principal.toNumber() - d.repaid.toNumber()), 0) / UNIT;
   const iOwe = debts.filter((d) => d.borrower.equals(me.publicKey) && d.status === "active").reduce((s, d) => s + (d.principal.toNumber() - d.repaid.toNumber()), 0) / UNIT;
   const myLink = myHandle ? `${origin()}/app?to=@${myHandle}` : `${origin()}/app?to=${me.publicKey.toBase58()}`;
-  const TABS: [Tab, string, () => React.ReactElement][] = [["home", "Home", IHome], ["debts", "Debts", IDebts], ["chamas", "Chamas", IChama], ["me", "Me", IMe]];
+  const TABS: [Tab, string, () => React.ReactElement][] = [["home", "Home", IHome], ["debts", "Debts", IDebts], ["chamas", "Chamas", IChama], ["books", "Books", IBook], ["me", "Me", IMe]];
   const go = (t: Tab, open = false) => { setTab(t); setFocus(null); if (open) setStartNew((n) => n + 1); };
 
   return (
@@ -189,6 +192,10 @@ export default function FunguApp() {
         {tab === "chamas" && (focus?.kind === "chama"
           ? <ChamaView address={focus.address} me={me} busy={busy} run={run} onBack={() => setFocus(null)} />
           : <Chamas key={`c${startNew}`} startOpen={startNew > 0} me={me} chamas={chamas} busy={busy} run={run} onOpen={(a) => setFocus({ kind: "chama", address: a })} />)}
+
+        {tab === "books" && (focus?.kind === "book"
+          ? <BookView address={focus.address} me={me} busy={busy} run={run} onBack={() => setFocus(null)} />
+          : <Books me={me} busy={busy} run={run} onOpen={(a) => setFocus({ kind: "book", address: a })} />)}
 
         {tab === "me" && <Me me={me} profile={profile} onLock={() => { setMe(null); setGate("lock"); }} />}
       </main>
