@@ -212,6 +212,7 @@ export async function fetchBookHistory(book: PublicKey) {
     if (page.length < 1000) break;
     before = page[page.length - 1].signature;
   }
+  let start: number[] | null = null;
   const out: { kind: number; seq: number; amount: number; hash: number[]; root: number[]; sig: string; time: number }[] = [];
   for (const s of sigs.reverse()) {
     const tx = await conn.getTransaction(s.signature, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
@@ -220,11 +221,13 @@ export async function fetchBookHistory(book: PublicKey) {
       const ev = (program.coder as any).events.decode(line.slice(14));
       if (ev?.name !== "bookEvent" && ev?.name !== "BookEvent") continue;
       const d = ev.data;
-      if (!d.book.equals(book) || d.kind < 1 || d.kind > 9) continue;
+      if (!d.book.equals(book)) continue;
+      if (d.kind === 0) { start = Array.from(d.entryHash as number[]); continue; }
+      if (d.kind < 1 || d.kind > 9) continue;
       out.push({ kind: d.kind, seq: Number(d.seq), amount: Number(d.amount), hash: Array.from(d.entryHash as number[]), root: Array.from(d.root as number[]), sig: s.signature, time: s.blockTime ?? 0 });
     }
   }
-  return out.sort((a, b) => a.seq - b.seq);
+  return { start, entries: out.sort((a, b) => a.seq - b.seq) };
 }
 
 export const bookActions = {
