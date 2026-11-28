@@ -157,6 +157,76 @@ export const actions = {
     send([await ix("withdrawBond", [], { member: me.publicKey, chama, profile: profilePda(me.publicKey), mint: MINT, vault: ata(chama), memberAta: ata(me.publicKey), tokenProgram: TOKEN_PROGRAM_ID })], me),
 };
 
+// ---------------------------------------------------------------- books (KES records, hash proofs)
+// A book holds no money. Each entry is a record kept off-chain (amount in KES,
+// who, M-Pesa code, note) whose salted SHA-256 lands on-chain once enough
+// officials approve. The chain of hashes (`root`) makes any later edit visible.
+export const ENTRY = { contribution: 1, payout: 2, repayment: 3, loan: 4, fine: 5, joined: 6, left: 7, note: 8, rules: 9 } as const;
+export type EntryKind = keyof typeof ENTRY;
+export type EntryRecord = { kind: EntryKind; amount: number; who?: string; mpesa?: string; note?: string; at: number };
+export const bookPda = (creator: PublicKey, id: number | BN) => pda(Buffer.from("book"), creator.toBuffer(), le(id));
+export const proposalPda = (book: PublicKey, seq: number | BN) => pda(Buffer.from("proposal"), book.toBuffer(), le(seq));
+const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+/** Canonical text of a record: fixed key order, so anyone re-hashes it the same way. */
+export const canonical = (r: EntryRecord) => JSON.stringify({ kind: r.kind, amount: r.amount, who: r.who ?? "", mpesa: (r.mpesa ?? "").trim().toUpperCase(), note: r.note ?? "", at: r.at });
+/** Salted hash: the salt stops anyone guessing a record (e.g. a phone number) from its hash on-chain. */
+export async function entryHash(r: EntryRecord, salt = hex(crypto.getRandomValues(new Uint8Array(16)))) {
+  return { salt, hash: await sha256(`${salt}|${canonical(r)}`) };
+}
+/** Recompute a book's root from its records, exactly as the program does. */
+export async function chainRoot(start: number[], entries: { kind: number; amount: number; hash: number[] }[]) {
+  let root = Uint8Array.from(start);
+  for (const e of entries) {
+    const buf = new Uint8Array(32 + 1 + 8 + 32);
+    buf.set(root, 0); buf[32] = e.kind; buf.set(new BN(e.amount).toArrayLike(Buffer, "le", 8), 33); buf.set(e.hash, 41);
+    root = new Uint8Array(await crypto.subtle.digest("SHA-256", buf));
+  }
+  return Array.from(root);
+}
+export const bookStore = store<{ salt: string; record: EntryRecord; hash: number[]; sig?: string }[]>("fungu.book.entries");
+export const rulesStore = store<string>("fungu.book.rules");
+
+export async function fetchBooks(me: PublicKey) {
+  const all = await (program.account as any).book.all();
+  return all
+    .map((x: any) => ({ address: x.publicKey as PublicKey, ...x.account }))
+    .filter((b: any) => b.officials.some((k: PublicKey) => k.equals(me)) || (bookStore.get()[b.address.toBase58()] ?? []).length > 0)
+    .sort((p: any, q: any) => q.createdAt.toNumber() - p.createdAt.toNumber());
+}
+export async function fetchBook(address: PublicKey) {
+  const b = await (program.account as any).book.fetchNullable(address);
+  return b ? { address, ...b } : null;
+}
+export async function fetchProposals(book: PublicKey) {
+  const all = await (program.account as any).proposal.all([{ memcmp: { offset: 8, bytes: book.toBase58() } }]);
+  return all.map((x: any) => ({ address: x.publicKey as PublicKey, ...x.account })).sort((p: any, q: any) => p.seq.toNumber() - q.seq.toNumber());
+}
+
+export const bookActions = {
+  async create(me: Keypair, officials: PublicKey[], threshold: number, rules: string, currency = "KES") {
+    const id = Date.now();
+    const book = bookPda(me.publicKey, id);
+    const i = await ix("createBook", [new BN(id), officials, threshold, await sha256(rules), Array.from(Buffer.from(currency.slice(0, 3)))], { payer: SPONSOR, creator: me.publicKey, book });
+    const sig = await send([i], me);
+    rulesStore.set(book.toBase58(), rules);
+    return { sig, book };
+  },
+  /** Propose an entry. Returns the proposal address; if the proposer alone meets the threshold it lands at once. */
+  async propose(me: Keypair, book: PublicKey, r: EntryRecord) {
+    const b = await fetchBook(book);
+    if (!b) throw new Error("book not found");
+    const { salt, hash } = await entryHash(r);
+    const proposal = proposalPda(book, b.nextProposal);
+    const i = await ix("propose", [ENTRY[r.kind], hash, new BN(Math.round(r.amount))], { payer: SPONSOR, book, proposal, proposer: me.publicKey });
+    const sig = await send([i], me);
+    const key = book.toBase58();
+    bookStore.set(key, [...(bookStore.get()[key] ?? []), { salt, record: r, hash, sig }]);
+    return { sig, proposal };
+  },
+  approve: async (me: Keypair, book: PublicKey, proposal: PublicKey) => send([await ix("approve", [], { payer: SPONSOR, book, proposal, official: me.publicKey })], me),
+  reject: async (me: Keypair, book: PublicKey, proposal: PublicKey) => send([await ix("reject", [], { payer: SPONSOR, book, proposal, official: me.publicKey })], me),
+};
+
 export const fmt = (raw: BN | number) => (typeof raw === "number" ? raw : raw.toNumber() / UNIT).toLocaleString("en-KE", { maximumFractionDigits: 2 });
 export const short = (k: PublicKey | string) => { const s = typeof k === "string" ? k : k.toBase58(); return `${s.slice(0, 4)}…${s.slice(-4)}`; };
 export const nameOf = (k: PublicKey, me?: PublicKey) => (me && k.equals(me) ? "You" : names.get()[k.toBase58()] || short(k));

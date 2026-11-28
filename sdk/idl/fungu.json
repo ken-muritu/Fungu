@@ -48,6 +48,45 @@
       ]
     },
     {
+      "name": "approve",
+      "docs": [
+        "An official approves. At the threshold the entry is chained into the",
+        "book and the proposal account closes (rent goes back to `payer`)."
+      ],
+      "discriminator": [
+        69,
+        74,
+        217,
+        36,
+        115,
+        117,
+        97,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true
+        },
+        {
+          "name": "book",
+          "writable": true,
+          "relations": [
+            "proposal"
+          ]
+        },
+        {
+          "name": "proposal",
+          "writable": true
+        },
+        {
+          "name": "official",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "cancel_agreement",
       "docs": [
         "The lender withdraws a proposal the borrower has not accepted yet."
@@ -292,6 +331,97 @@
           "name": "guarantor",
           "type": {
             "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_book",
+      "docs": [
+        "Open a book. `officials` are the people whose approvals count (chair,",
+        "treasurer, secretary; or lender and borrower for a debt)."
+      ],
+      "discriminator": [
+        175,
+        218,
+        251,
+        18,
+        91,
+        19,
+        194,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "officials",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "threshold",
+          "type": "u8"
+        },
+        {
+          "name": "rules_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "currency",
+          "type": {
+            "array": [
+              "u8",
+              3
+            ]
           }
         }
       ]
@@ -787,6 +917,92 @@
       "args": []
     },
     {
+      "name": "propose",
+      "docs": [
+        "Anyone proposes an entry (a contribution with its M-Pesa code hash, a",
+        "payout, a repayment, a fine) or a rule change. An official proposer's",
+        "approval counts at once."
+      ],
+      "discriminator": [
+        93,
+        253,
+        82,
+        168,
+        118,
+        33,
+        102,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "book"
+              },
+              {
+                "kind": "account",
+                "path": "book.next_proposal",
+                "account": "Book"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": "u8"
+        },
+        {
+          "name": "entry_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "register_name",
       "docs": [
         "Claims a Fungu name (@name) for the signer. First come, first served; one name per",
@@ -868,6 +1084,44 @@
           "type": "string"
         }
       ]
+    },
+    {
+      "name": "reject",
+      "docs": [
+        "The proposer or any official withdraws a proposal that hasn't landed."
+      ],
+      "discriminator": [
+        135,
+        7,
+        63,
+        85,
+        131,
+        114,
+        111,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true
+        },
+        {
+          "name": "book",
+          "writable": true,
+          "relations": [
+            "proposal"
+          ]
+        },
+        {
+          "name": "proposal",
+          "writable": true
+        },
+        {
+          "name": "official",
+          "signer": true
+        }
+      ],
+      "args": []
     },
     {
       "name": "repay",
@@ -1033,6 +1287,19 @@
       ]
     },
     {
+      "name": "Book",
+      "discriminator": [
+        121,
+        34,
+        121,
+        35,
+        91,
+        62,
+        85,
+        222
+      ]
+    },
+    {
       "name": "Chama",
       "discriminator": [
         92,
@@ -1070,6 +1337,19 @@
         127,
         188
       ]
+    },
+    {
+      "name": "Proposal",
+      "discriminator": [
+        26,
+        94,
+        189,
+        187,
+        116,
+        136,
+        53,
+        33
+      ]
     }
   ],
   "events": [
@@ -1084,6 +1364,19 @@
         29,
         59,
         172
+      ]
+    },
+    {
+      "name": "BookEvent",
+      "discriminator": [
+        185,
+        244,
+        232,
+        42,
+        29,
+        6,
+        199,
+        174
       ]
     },
     {
@@ -1218,6 +1511,31 @@
       "code": 6020,
       "name": "InvalidName",
       "msg": "Names are 3-20 lower-case letters, digits or _, starting with a letter"
+    },
+    {
+      "code": 6021,
+      "name": "BadOfficials",
+      "msg": "A book needs 1 to 5 distinct officials, including its creator"
+    },
+    {
+      "code": 6022,
+      "name": "BadThreshold",
+      "msg": "Approvals needed must be between 1 and the number of officials"
+    },
+    {
+      "code": 6023,
+      "name": "NotOfficial",
+      "msg": "Only an official of this book can do that"
+    },
+    {
+      "code": 6024,
+      "name": "AlreadyApproved",
+      "msg": "Already approved"
+    },
+    {
+      "code": 6025,
+      "name": "BadKind",
+      "msg": "Unknown entry type"
     }
   ],
   "types": [
@@ -1348,6 +1666,117 @@
           },
           {
             "name": "Forgiven"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Book",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "officials",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "threshold",
+            "type": "u8"
+          },
+          {
+            "name": "rules_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "currency",
+            "type": {
+              "array": [
+                "u8",
+                3
+              ]
+            }
+          },
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "entries",
+            "type": "u64"
+          },
+          {
+            "name": "next_proposal",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BookEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "book",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "seq",
+            "type": "u64"
+          },
+          {
+            "name": "entry_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -1528,6 +1957,59 @@
           {
             "name": "chama_missed",
             "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Proposal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "book",
+            "type": "pubkey"
+          },
+          {
+            "name": "seq",
+            "type": "u64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "entry_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "approvals",
+            "type": "u8"
+          },
+          {
+            "name": "rent_payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
           },
           {
             "name": "bump",

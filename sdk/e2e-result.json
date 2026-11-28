@@ -1,8 +1,9 @@
 {
   "program": "6NtCwcAU57GGeLCKQcJCgnk9Nzu9892jdQFDUaM2T4bE",
-  "mint": "F4UU4JscCtM7VZHyc6K8gYLt1ri6MmkvUPYW6qqKuoHc",
-  "agreement": "26YumjjvQJkKsxXapbgJcN5fQuwpRPVqUfzyJApGk9rR",
-  "chama": "2CVR6TPJDggQMjiZ4i8GcaPYVq9FtPTjzkriS6knDAXx",
+  "mint": "DfhS2GcaYQmYtbsnzPyZR1QTCsGDjj5MnhfQyUrsZoEu",
+  "agreement": "2xep5dcC2qtEboCWKZ21UwBzKpBJY23biwGxDL9fXDY8",
+  "chama": "3qLtwu9scBSZS28FFAdk4SxZbCoe9JqkbAq9RdtSWgAr",
+  "book": "FpxVnUuVvPKEUPTQDPAue54aRjJbmtJNMrNa9vjJB5fs",
   "final": {
     "alice": 70,
     "bob": 130,
@@ -12,111 +13,143 @@
   "txs": [
     {
       "name": "profile alice",
-      "sig": "49QhhiGuLpLawUiSsurSfDjTV8NCLNAC9mFCExdftTqyVChwvy61xpq9WjFDijK696Hg5NRuQ5rDwUESnYZFWhpS"
+      "sig": "49xVNUHRKi1CAptoGj8A6qyKhhbH5YGKTwjqSQrZrDfPxjZfWCo8oQkYMvNqXbQPMY53CfCxCiQKL3LaT92ZrrXP"
     },
     {
       "name": "profile bob",
-      "sig": "3rLqZroFPPckzrxWewfDFNchydi6MQTNMSod5xcbJ5c1nYAUHbTPHqdUpP2Txni1gaU9Uy6emrpLWQy3YZCaAGA9"
+      "sig": "423MC1cCseMJt7MET387yzgoQjLmhhNe3CQPBSxmPu19gahVe2ByVyx6JXFEjvtaACn8nD5o9gHC4cuuDMNNtypR"
     },
     {
       "name": "profile carol",
-      "sig": "4GqbP1kjjSXyqB9YyBmRXhQaZscPkLBjxLaREjpx7ZKeW5fb5DSQbyPer2xyzohkTEmUZM7z2sf7ZRdx1vZWuaW"
+      "sig": "GmzRzm4GHM6wqbzSYJPZRTKh47GFKNjzZbYiJBoHNfeM7ELfiLKAqoaFHv2Pf1uEMcumEXQ74CXxtz3eYYcoXkG"
     },
     {
       "name": "create",
-      "sig": "4rADB9eSFJ4noiFePExTtAyryah4Pu1fEDK7wmmJxke92kKBbAqncGZpfWWyVVuynxS7bvRoyfaVjqbh3Muu29gb"
+      "sig": "4nbdTKTQY8QLRjiid6eqGRNUxadgK7ynR7N46KD99qvfVccaatrTH4xhkZLNqEmjzTX1xc7jskLodgZh6DgqnxZW"
     },
     {
       "name": "Bob accepts",
-      "sig": "3CWgyY1ocHGbsSb6Hbt1b2qS7y3CveKwj1f75P4mQHNUeLUcBGxzxMBfFq19KKyfPacca51WfYzyn2fcikBn9sny"
+      "sig": "3cpjPDF4BqWj43vZT5RREmNJ1AiyjuqG2aMFg4dMvEVj1CGScUQDaYHJMCXBf4ydAnTjzrkz952Q13aC2tSw5ywE"
     },
     {
       "name": "Carol co-signs",
-      "sig": "2b8jdLcAhQFAD15zkYFrd5GwHsu9yMzfNoyf4URCpQ7SttDeL4PWvJUdKUoM5zqWfjyWGbJvQhin7EkBzbd86hxz"
+      "sig": "3VjVtV7okTPHA1G9nmsZFDUyJbP19h2yETC7KZnKvzqTfLuTncHRUxhdwKW5PiFbs3sxGv4qZdjRUhHLWCi2Gybp"
     },
     {
       "name": "Alice funds 50",
-      "sig": "3EmzuYwfGXVgjogpUwWmvxPi9S684oEvHv9bkkvnLVDppm4K2AF7VrPX4GnbwFd7tEEZNwY5AgEBpUgiK4tuvpFS"
+      "sig": "uwEPKtCFHhCeCXbUqv5TU9VDuJSEFbgSpB7FVy1ux56GsmFPAqdT4Cv1ZdrFerpRhpCJ3rciJi6g5apViRigu4X"
     },
     {
       "name": "Bob repays 20",
-      "sig": "4WsL2j7JDNFXzfsqMibb2t6183eGfvRHCsPnwQbG4QhkoZYS7qzhtxn1cyKKK6QZmx4C6oZFgD8QiQa6P32VTWqe"
+      "sig": "5Xs56uoTb4af5wxqVpLikDKCC9CA9dW7t2v1YFvHw4Zyktx2pphV7FKtPXsnzyyQcKKV3YWDyQ1qvxUDx63Uvf45"
     },
     {
       "name": "Alice confirms 30 received by mobile money",
-      "sig": "JqMhwFvnv2yJ5VgtqzL2U56qW6ZYk9EVV3bimS6wuf83JR9i42Nke5NDEtt7XLAydnv1HWVTYnkDoVv3UxVZHkr"
+      "sig": "383p2UfoZRDGJs3TAbkCGvRyR7M5SauNxyQvi6gfLZhetbmY5RWQZiXc4gxH9RXnuek7RUoamgMyAxSx7Gdohwcg"
     },
     {
       "name": "create chama",
-      "sig": "5pp6zvzhbHgVRFzhMeFyYGF2Nuc17xc4sKKKVMBD8Smuu9nTeupNeATBMmuJaMqyRGCpaYKUMJjmnFGfid8Lz8Ju"
+      "sig": "5MmYXc4S1ZiG49PABviVNyCi8G79aGv3r65KYCz9B7VCxDkcxrnVoQwMiKq6knXZ7bqXfgKufA9V8DpHaeJ8vBaN"
     },
     {
       "name": "alice joins (bond 10)",
-      "sig": "2FhkZqF4TTVHKMFkVpfMLUX7SNvcjTs1HAArs91fcWdsYchssoWW1HTZ6ZDwAHLRkfGp1EesLuPBZePZ7S7LZqmT"
+      "sig": "2pBHpVXkxecp6E6QiwzfaaFGab9uSPznfAcJS73zUyh6jhR8FeY1ug5jPgwZYBEdNAVjsgwVkdZTAtrMnMvBdJfZ"
     },
     {
       "name": "bob joins (bond 10)",
-      "sig": "3mY8QHiupFM5SKHZPby5X8r1AoQs26tLsYouBrE435BR5cqq8AJDAbv62kP1nA51NT8T4DWV9EfiPGLSncVQEbv2"
+      "sig": "3x1x3b5ux2hMddPLAEycy3xdjWYkWeo73o2utUvCZjz7FLrQ9NA21R9uVu7QmqMNAgeq5ukWdi6Hpmjg6AgqWEjE"
     },
     {
       "name": "carol joins (bond 10)",
-      "sig": "4QAHx3Eq5xXttnCLxJU72G2jS1U919V9pXKz7DEjXYqC2DzCbw1ybpvDzeoZctm2BeRpKfgDooFvu9nWX4Nfj7e2"
+      "sig": "2saW38pc6sBbCqot3GzpahiqXPi4d3H9p1iH1WiFXqfcLvwEuJHKD4rsRTyqNvEZpzi9t8eLPry7FgaQLKFcCevo"
     },
     {
       "name": "R1 alice contributes",
-      "sig": "jz1hQ9VF9WSyvx7yuzEpbJ1EMXLDVdbJgrVPveKkBs7t1TyRN4L9KL7PTjjq8NPwYUMqCfi9ePFeWKaBvbnipCr"
+      "sig": "5dMhp9g4KWJgHxjyj9Q82juwgsNdQMDNsLAWYYEgj7yR7vyWE6B9Bk7HYeB1R7rcsmGEY2dEDaDmuYp11nE3SZme"
     },
     {
       "name": "R1 bob contributes",
-      "sig": "49fiQon69ycrT8s9zCUZ5YHRBCk5A8n7kTg5dDUWxGoRLCdfyN2fR7WCjTGLtdakakjrxiKq3y2TKvz27GJGC5Bs"
+      "sig": "4L1dBLvfKk7eUtYrvyR1SRoexVsPBueGqPp5i6MKHWfA6Zg6ZVSnLLPZwyso1FdbKSNFKNgtVfKhH9e4eSDLDVu6"
     },
     {
       "name": "R1 carol contributes",
-      "sig": "4ECeZu1AKT9URu9p9VC92ge6vLqDdyd6xvspeugHHieVaoAmyFqCa74f1hLC9Vq5bgwdDAHBUfW1JEEEXzcFX58r"
+      "sig": "5Hj9NtXVrzK7nPc7uaqZCaedoS6gYoX7L4NnugjKJsYHpmvWqjU2TqD9VZwqKzomjEqxf6GnX6VJvsVeRi7y8CXR"
     },
     {
       "name": "R1 payout -> Alice",
-      "sig": "3bY33AfLMLvEPKsM3dE6F4sfZRziAfNuEtDsNocxVX88a3C3Qpj8JhV7FWt9G3BMVdoYP9uRMFmHXQWCAsMmpifD"
+      "sig": "38kTttYsL9Lg7ioPijfTyiWSS9Ay3uKVrACmqNd4SoyHjJTgp62GsGAaSBNvCXWXimunTkCo7drHwRhok3zdSaah"
     },
     {
       "name": "R2 alice contributes",
-      "sig": "a2eXXB66t4syxFssh8uJprTSLVzdSm6y7swnekpYtfYyVNLsfQ1FW1YrP2fvfcfwPB4N34hBC7ySU3RXCmm2U1H"
+      "sig": "2eZYwC9qtqFhPD4Y2MPhwHPnPZ3tVpmwLF5n6sCtiNEMceTyTNdHh5CLehSMFSU9YVxyMHjFy4kLot9tzErFnGfD"
     },
     {
       "name": "R2 bob contributes",
-      "sig": "5W1uRYdJgSmz7QHqMXFTyiNfqhG8pvJKpxiisuRqoDYpK2eT3vRjZFP72PyUSF8YcwghbYhG1WKRwXi2nu3s2pL"
+      "sig": "37yoY1BGmC1nif8DKsH4WYBY9J7GU57A11ufHZBpzNBYyEkeDor9xhujnWz9RQkS4oZHvkrE7uP3GgtXvvTQyLhU"
     },
     {
       "name": "R2 payout -> Bob (Carol's share from her bond)",
-      "sig": "52DLd9VRxWCzJhEybydRTwuxYHBaLC1yN9CwhLFRvdFNaNeHwTUivMVkaGyqTqf3sQfMooa21sQVxGRJYPhdnt83"
+      "sig": "5mYMCiyXTmchXK5ZG2MTu5zqTUNyuxXMeW9j1hUZimjD5hpRiRR3i5JnC8qL8wSQm8cmUB1ZUFmDMaKAb2WzjBKB"
     },
     {
       "name": "R3 alice contributes",
-      "sig": "2zsTXAAv4k32jacordFEqhKU5X7APePUtAHU6uhxBm9pfzR63DtADK3fBkZTvZbegjWfPfJ466tS2orxmDZChqwS"
+      "sig": "5zgnSDvfHmqGt5yo3XvAzK5F7GqQ1XKFVJFo9nR7hNXK3b5fECzpFxXrxhDVReWpVfZErvqDavB8hF2TPPY54bWL"
     },
     {
       "name": "R3 bob contributes",
-      "sig": "3fPhYsnuTHX9Qj3JMwW2sDkTMDtsu5wMyggzdcsFsHMRcqt3qvfvuSjwESVyaLCsemUu7Zd8UqR8dN1WGiUZLxp7"
+      "sig": "5bE3rzXVDoY3Ym6LRE5CxoweyMZGsAiLDA7xKfQeq3RdG6xNuPhWZCv8SZahniJMsjbReRTxuzV3nGF7dBRTL2N6"
     },
     {
       "name": "R3 carol contributes",
-      "sig": "3rpUxu2QqKGvfaBCjuYrnLZrsyK9HbDnj9ncoGwTY3PZx98ou3kmBQqSqG7176a4aA11Ay5ViPVb5gcgRFc4ZyGt"
+      "sig": "4SubnBAFBonohvCat5sNPeGXcYt1CXBHL81KRRhkr7hVn4RegU3pPdR9P3WMN1f68ZeBb4Z3mxxvfkvum9ueV8ye"
     },
     {
       "name": "R3 payout -> Carol",
-      "sig": "5vzXXDx34nF4VYAtQhCpsgzYqMPsRbzZu96LQdtA8kVFfrRDdmZscaZRcwWpGPyj6Dqk7B7p1wZgm8uPiDLkjmKW"
+      "sig": "8caukXf1mChAqNRcmPR5UJUcqHZUTU5KQ68vGdbbYD2qKNCjJoAftwGu6VikEKRDfTY4KUF9SEZMHazvpiNhFH6"
     },
     {
       "name": "alice withdraws bond",
-      "sig": "2jckMMLCD5u9wPfbHUbpFyiCoz2qS7hRY1945a5iJYVWX8byCmVrpXnur5M3K1LePgKS1jj6K2mvrxNWVUZYwcNw"
+      "sig": "2peheBvbWnkZ8gAqdNrweVmDHatF8PLyW7nm2k7NoCNEb97Fq5nJBbRbBe3kh7Ue26kVNztqCdknjcc6dwZNV8ye"
     },
     {
       "name": "bob withdraws bond",
-      "sig": "47Jxe16hipowpZNVNqgXnpnsTx7V6DRkLFgyzCs7GbnYmRfAMde4iwhkQBxoFwzSabcjhLTznpMkaYZSLYAPatGH"
+      "sig": "3FqpxQcfe28brRfpCTRfxcTEBZ69fzB1RUbkQL3pjwf18mT1EPBVB9jCKWUV6xYmDVXjphdmWxj26vZrqxaqWdEU"
     },
     {
       "name": "carol withdraws bond",
-      "sig": "2gJUuKuApvpZyqpGq9rRNS4GRXTJEzNRnTc2KcRmbzw5jVHSm8MfBXPLMdJwsmXkDunbDgCsdpVTLRdesJgENKST"
+      "sig": "5hDyJ2JG1uJczs9ZwJL9QZhv4Ma4S3vFspHRLKJ3sJwVguFmAD2k89wdUuwwk92HxU4nDXu4ew8MStHdMwvXvWd2"
+    },
+    {
+      "name": "create book (2 of 3 officials)",
+      "sig": "H3XLnJBM6M8oNZrwGov6Z4VTwgf6qcUBxQ1XBzmjjkDjMRei9iDXDh7G1GuZpEWfPAj3a2mvpHkvx8Fq2xUZiqF"
+    },
+    {
+      "name": "outsider proposes contribution KES 500",
+      "sig": "3JGvMGZGYKn7MxJp2DHKBCQhVmNQDtJvSWupBPT1jYhLMorP31KEms8SeZJgFstF8HEsB2zEN1GQSfaa7ijRces3"
+    },
+    {
+      "name": "Alice approves",
+      "sig": "ryJiPrUbECnFmGNGTzoQwF329R2Cj1biK7MoPYycykd6iQ9rN2r3R5jNQcfRRKPDYUrrXJzMTVsd6LsBx34f1Dk"
+    },
+    {
+      "name": "Bob approves -> entry lands",
+      "sig": "2oWY4aX7szqgV75wPiaitEauaPThyoFVKYzNeHAsSsAUweMTabiScoopd85Ua9ttRST12y5odvy9VCxbkhTbBBdF"
+    },
+    {
+      "name": "Carol proposes payout KES 1,500",
+      "sig": "KWbhnGrZ8Gn7XLWvVX9kBYwueyn3s12V75T9T3Xn2GwdLfLePc2PoJbXJvxh4TDFrBeXe1zn8QUULcrXCcEe8yg"
+    },
+    {
+      "name": "Bob rejects it",
+      "sig": "grd3dR9dAuJaxGYP3B8nysxLtXohNotLDwnP1cTAo2eUoKEu8Pp6mrtnKsSnJYWUGcjiyudxFLHhPupdsGSmLvD"
+    },
+    {
+      "name": "Alice proposes rule change",
+      "sig": "6vdqicxPxfBYDK3uzAa1FJFNrh4DFWBSkddLKp1kJtW9fLt5uzSRw2Jonx87BX6ebnCozs6jmPws7jgVJaj5qmr"
+    },
+    {
+      "name": "Carol approves rule change",
+      "sig": "47EBm1KpsiathUucxi19mA9xccQHLwGvjHFdsCciezq78xK6PrZ1ThbmT9pJ5z4PVC1tPuzo2q1jXGXpvxvR5rWB"
     }
   ]
 }
